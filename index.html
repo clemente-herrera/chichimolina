@@ -501,6 +501,34 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
       <input class="field-input" id="login-email" type="email" placeholder="Email" onkeydown="if(event.key==='Enter')doLogin()">
       <input class="field-input" id="login-pass" type="password" placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()">
       <button class="login-btn" id="login-btn" onclick="doLogin()">Ingresar</button>
+      <div style="text-align:center;margin-top:8px">
+        <button onclick="mostrarRecuperarPassword()" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline">¿Olvidaste tu contraseña?</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORD RECOVERY PANEL (inside login screen) -->
+<div class="modal-overlay" id="m-recovery" onclick="if(event.target===this)closeModal('m-recovery')">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div><div class="modal-title">Recuperar contraseña</div>
+        <div class="modal-sub">Te enviaremos un link para resetearla</div></div>
+      <button class="close-btn" onclick="closeModal('m-recovery')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="login-error" id="recovery-error"></div>
+      <div id="recovery-success" style="display:none;background:var(--accent-light);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--accent)">
+        ✓ Email enviado. Revisa tu bandeja de entrada.
+      </div>
+      <div class="field-group" id="recovery-form">
+        <label class="field-label">Email</label>
+        <input class="field-input" id="recovery-email" type="email" placeholder="correo@ejemplo.com" onkeydown="if(event.key==='Enter')enviarRecovery()">
+      </div>
+    </div>
+    <div class="modal-footer" id="recovery-footer">
+      <button class="btn-secondary" onclick="closeModal('m-recovery')">Cancelar</button>
+      <button class="btn-primary" onclick="enviarRecovery()">Enviar link</button>
     </div>
   </div>
 </div>
@@ -673,78 +701,141 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 
 <!-- AJUSTES -->
 <div class="page" id="page-ajustes">
-  <div class="fin-scroll" style="max-width:600px;margin:0 auto;padding:28px 24px;gap:20px;display:flex;flex-direction:column">
-    <div style="font-family:'DM Serif Display',serif;font-size:24px">Ajustes</div>
+  <div class="fin-scroll" style="max-width:680px;margin:0 auto;padding:28px 24px;gap:0;display:flex;flex-direction:column">
+    <div style="font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:20px">Panel de control</div>
 
-    <div class="section">
-      <div class="section-header"><div class="section-title">Notificaciones automáticas</div></div>
-      <div class="notif-card" style="border:none;border-radius:0;box-shadow:none">
-        <div class="notif-row">
-          <div>
-            <div class="notif-label">Resumen semanal a profesoras</div>
-            <div class="notif-sub">Se envía cada viernes a las 6:00 PM (hora Chile) con el horario de la semana siguiente</div>
+    <!-- NOTIFICACIONES -->
+    <div class="section" style="margin-bottom:16px">
+      <div class="section-header"><div class="section-title">📬 Notificaciones automáticas</div></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label class="field-label">API Key de Resend</label>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <input type="password" class="field-input" id="resend-key" placeholder="re_xxxxxxxxxxxxxxxx" style="flex:1">
+            <button class="btn-secondary" style="font-size:12px;white-space:nowrap" onclick="guardarResendKey()">Guardar</button>
           </div>
-          <label class="toggle-wrap"><input type="checkbox" id="notif-profes" checked><span class="toggle-slider"></span></label>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Crea una cuenta gratis en <a href="https://resend.com" target="_blank" style="color:var(--accent)">resend.com</a> y pega tu API key aquí para activar los emails.</div>
+          <div id="resend-status" style="font-size:11px;margin-top:4px"></div>
         </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg);border-radius:var(--radius-sm)">
-          <div style="font-size:12px;color:var(--text2)">Hora de envío</div>
-          <input type="time" value="18:00" id="notif-hora" class="field-input" style="width:120px;padding:6px 10px">
-          <select id="notif-dia" class="field-select" style="width:140px;padding:6px 10px">
-            <option value="5">Viernes</option>
-            <option value="6">Sábado</option>
-            <option value="0">Domingo</option>
+        <div style="border-top:1px solid var(--border);padding-top:14px;display:flex;flex-direction:column;gap:12px">
+          <div class="notif-row">
+            <div><div class="notif-label">Resumen semanal a profesoras</div>
+              <div class="notif-sub">Horario de la semana siguiente enviado automáticamente</div></div>
+            <label class="toggle-wrap"><input type="checkbox" id="notif-profes" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--bg);border-radius:var(--radius-sm)">
+            <div style="font-size:12px;color:var(--text2)">Enviar cada</div>
+            <select id="notif-dia" class="field-select" style="width:120px">
+              <option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option>
+            </select>
+            <div style="font-size:12px;color:var(--text2)">a las</div>
+            <input type="time" value="18:00" id="notif-hora" class="field-input" style="width:100px">
+            <button class="btn-secondary" style="font-size:12px" onclick="guardarConfigNotif()">Guardar</button>
+            <button class="btn-primary" style="font-size:12px" onclick="enviarResumenAhora()">▶ Enviar ahora (prueba)</button>
+          </div>
+          <div class="notif-row" style="padding-top:10px;border-top:1px solid var(--border)">
+            <div><div class="notif-label">Recordatorio recuperativos</div>
+              <div class="notif-sub">Email al alumno 24 hrs antes de su clase recuperativa</div></div>
+            <label class="toggle-wrap"><input type="checkbox" id="notif-recup" checked><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIPOS DE CLASE -->
+    <div class="section" style="margin-bottom:16px">
+      <div class="section-header"><div class="section-title">🏋️ Tipos de clase</div>
+        <button class="btn-secondary" style="font-size:12px" onclick="agregarTipoClase()">+ Nuevo tipo</button></div>
+      <div id="tipos-clase-list" style="padding:12px 18px;display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <!-- HORARIOS DISPONIBLES -->
+    <div class="section" style="margin-bottom:16px">
+      <div class="section-header"><div class="section-title">🕐 Horarios disponibles</div>
+        <button class="btn-secondary" style="font-size:12px" onclick="agregarHorario()">+ Horario</button></div>
+      <div style="padding:12px 18px">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Bloques de hora que aparecen en el calendario</div>
+        <div id="horarios-list" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+    </div>
+
+    <!-- PRECIOS Y TARIFAS -->
+    <div class="section" style="margin-bottom:16px">
+      <div class="section-header"><div class="section-title">💰 Precios y tarifas</div></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <label class="field-label">Precio por clase por defecto</label>
+            <div style="font-size:11px;color:var(--text3)">Se pre-rellena al crear alumnos nuevos</div>
+          </div>
+          <input type="number" class="field-input" id="precio-std-input" style="max-width:130px" value="8000">
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <label class="field-label">Período de pago por defecto</label>
+            <div style="font-size:11px;color:var(--text3)">Se pre-selecciona al crear alumnos nuevos</div>
+          </div>
+          <select class="field-select" id="periodo-std" style="max-width:160px">
+            <option value="mensual">Mensual</option>
+            <option value="bimensual">Bimensual</option>
+            <option value="trimestral">Trimestral</option>
           </select>
-          <button class="btn-secondary" style="font-size:12px" onclick="showToast('Horario guardado')">Guardar</button>
         </div>
-        <div class="notif-row" style="padding-top:8px;border-top:1px solid var(--border)">
-          <div>
-            <div class="notif-label">Recordatorio clases recuperativas</div>
-            <div class="notif-sub">Avisa al alumno 24 hrs antes de su clase recuperativa asignada</div>
-          </div>
-          <label class="toggle-wrap"><input type="checkbox" id="notif-recup" checked><span class="toggle-slider"></span></label>
+        <div style="border-top:1px solid var(--border);padding-top:12px">
+          <label class="field-label" style="margin-bottom:10px;display:block">Tarifas estándar por tipo de clase</label>
+          <div id="tarifas-std-list" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+        <button class="btn-primary" style="align-self:flex-start;font-size:12px" onclick="guardarPrecios()">Guardar precios y tarifas</button>
+      </div>
+    </div>
+
+    <!-- FERIADOS -->
+    <div class="section" style="margin-bottom:16px">
+      <div class="section-header"><div class="section-title">📅 Feriados Chile</div>
+        <button class="btn-secondary" style="font-size:12px" onclick="agregarFeriado()">+ Agregar</button></div>
+      <div style="padding:12px 18px">
+        <div id="feriados-list" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto"></div>
+      </div>
+    </div>
+
+    <!-- BACKUP -->
+    <div class="section" style="margin-bottom:16px">
+      <div class="section-header"><div class="section-title">💾 Backup y exportación</div></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:13px;color:var(--text2)">Exporta todos tus datos en formato Excel para tener un respaldo local.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-secondary" onclick="exportarAlumnos()">📥 Exportar alumnos</button>
+          <button class="btn-secondary" onclick="exportarClases()">📥 Exportar clases</button>
+          <button class="btn-secondary" onclick="exportarPagos()">📥 Exportar pagos</button>
+          <button class="btn-primary" onclick="exportarTodo()">📥 Exportar todo</button>
         </div>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-header"><div class="section-title">Precio estándar trimestral</div></div>
-      <div style="padding:16px 18px;display:flex;align-items:center;gap:12px">
-        <input type="number" class="field-input" id="precio-std-input" value="180000" style="max-width:160px">
-        <button class="btn-secondary" style="font-size:12px" onclick="guardarPrecioStd()">Guardar</button>
-        <div style="font-size:12px;color:var(--text3)">Aplica a alumnos sin precio personalizado</div>
+    <!-- HISTORIAL DE CAMBIOS -->
+    <div class="section" style="margin-bottom:16px">
+      <div class="section-header"><div class="section-title">📋 Historial de cambios</div></div>
+      <div id="historial-list" style="padding:12px 18px;max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:13px;color:var(--text3)">Los cambios importantes se registran automáticamente aquí.</div>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-header"><div class="section-title">Tarifas estándar por tipo de clase</div>
-        <div class="section-sub">Base para profesoras sin tarifa personalizada</div></div>
-      <div style="padding:12px 18px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:100px;font-size:13px;font-weight:500">Reformer</div>
-          <input type="number" class="field-input" id="std-reformer" style="max-width:120px" value="15000">
+    <!-- INVITAR ADMINISTRADOR -->
+    <div class="section" style="margin-bottom:16px">
+      <div class="section-header"><div class="section-title">👤 Administradores</div></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:13px;color:var(--text2)">Invita a otra persona para que tenga acceso completo a la app.</div>
+        <div style="display:flex;gap:8px">
+          <input type="email" class="field-input" id="invite-email" placeholder="correo@ejemplo.com" style="flex:1">
+          <button class="btn-primary" onclick="invitarAdmin()">Enviar invitación</button>
         </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:100px;font-size:13px;font-weight:500">Mat</div>
-          <input type="number" class="field-input" id="std-mat" style="max-width:120px" value="12000">
-        </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:100px;font-size:13px;font-weight:500">Chair</div>
-          <input type="number" class="field-input" id="std-chair" style="max-width:120px" value="14000">
-        </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:100px;font-size:13px;font-weight:500">Barrel</div>
-          <input type="number" class="field-input" id="std-barrel" style="max-width:120px" value="13000">
-        </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:100px;font-size:13px;font-weight:500">Recuperativo</div>
-          <input type="number" class="field-input" id="std-recuperativo" style="max-width:120px" value="12000">
-        </div>
-        <button class="btn-secondary" style="font-size:12px;align-self:flex-start;margin-top:4px" onclick="guardarTarifasStd()">Guardar tarifas</button>
+        <div id="invite-status" style="font-size:12px;color:var(--text3)"></div>
       </div>
     </div>
 
+    <!-- SESIÓN -->
     <div class="section">
-      <div class="section-header"><div class="section-title">Sesión</div></div>
+      <div class="section-header"><div class="section-title">🔐 Sesión</div></div>
       <div style="padding:16px 18px;display:flex;align-items:center;justify-content:space-between">
         <div>
           <div style="font-size:13px;font-weight:500" id="ajustes-user-email">—</div>
@@ -753,9 +844,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
         <button class="btn-secondary" onclick="doLogout()">Cerrar sesión</button>
       </div>
     </div>
+
   </div>
 </div>
-
 </div></div><!-- end page-wrap / app -->
 
 <!-- MODALS (mismo set que versión anterior, simplificado) -->
@@ -1055,6 +1146,43 @@ const getMensualProfe=p=>p._clases?p._clases.reduce((s,c)=>s+getTarifaProfe(p,c.
 let currentPage='calendario', calOffset=0, finPeriod='mensual', finOffset=0, profeAgendaOffset=0;
 // excepciones: {claseId, semanaOffset, diaIdx, horaIdx, profeId, cancelada}
 let excepciones=[];
+
+function getSemanaInicio(offset=0){
+  const dates=getWeekDates(offset);
+  return dates[0].toISOString().split('T')[0];
+}
+
+async function saveExcepcion(exc){
+  if(!USE_SUPABASE) return;
+  try{
+    const semanaInicio=getSemanaInicio(exc.semanaOffset);
+    await db.from('excepciones_semana').upsert({
+      clase_id:exc.claseId,
+      semana_inicio:semanaInicio,
+      dia_idx:exc.diaIdx,
+      hora_idx:exc.horaIdx,
+      profe_id:exc.profeId||null,
+      cancelada:exc.cancelada
+    },{onConflict:'clase_id,semana_inicio'});
+  }catch(e){console.warn('Error saving excepcion:',e);}
+}
+
+async function loadExcepciones(){
+  if(!USE_SUPABASE) return;
+  try{
+    const {data}=await db.from('excepciones_semana').select('*');
+    if(!data) return;
+    excepciones=(data||[]).map(e=>{
+      // Convert semana_inicio date back to offset
+      const semLunes=new Date(e.semana_inicio+'T12:00:00');
+      const hoy=getWeekDates(0)[0];
+      const diffMs=semLunes-hoy;
+      const semanaOffset=Math.round(diffMs/(7*24*3600*1000));
+      return {claseId:e.clase_id, semanaOffset, diaIdx:e.dia_idx,
+        horaIdx:e.hora_idx, profeId:e.profe_id, cancelada:e.cancelada};
+    });
+  }catch(e){console.warn('Error loading excepciones:',e);}
+}
 let selAlumnoId=null, selProfeId=null, alumnoFilter='todos';
 let editingAlumnoId=null, editingProfeId=null, activeClaseId=null, editingTarifa=null;
 let pagoAlumnoId=null, pagoProfeId=null;
@@ -1149,6 +1277,7 @@ async function loadAllData(){
 
   // Enrich profes with their classes
   localProfes.forEach(p=>{p._clases=localClases.filter(c=>c.profe_id===p.id);});
+  await loadExcepciones();
 }
 
 // ── DB WRITE HELPERS ─────────────────────────────────────────
@@ -1426,6 +1555,7 @@ function cancelarEstaSemanaNow(){
   const existing=excepciones.findIndex(e=>e.claseId===claseSemanaNowId&&e.semanaOffset===calOffset);
   const exc={claseId:claseSemanaNowId, semanaOffset:calOffset, diaIdx:c.dia_semana, horaIdx:c.hora_idx, profeId:c.profe_id, cancelada:true};
   if(existing>=0) excepciones[existing]=exc; else excepciones.push(exc);
+  saveExcepcion(exc);
   renderCalendar();
   showToast(`${TIPO_L[c.tipo]} cancelado solo esta semana`);
 }
@@ -1446,6 +1576,7 @@ function confirmarCambioProfe(){
   const existing=excepciones.findIndex(e=>e.claseId===claseSemanaNowId&&e.semanaOffset===calOffset);
   const exc={claseId:claseSemanaNowId, semanaOffset:calOffset, diaIdx:c.dia_semana, horaIdx:c.hora_idx, profeId:newProfeId, cancelada:false};
   if(existing>=0) excepciones[existing]=exc; else excepciones.push(exc);
+  saveExcepcion(exc);
   const p=localProfes.find(x=>x.id===newProfeId);
   renderCalendar();
   showToast(`Profesora cambiada a ${p?p.nombre:'—'} solo esta semana`);
@@ -1489,6 +1620,7 @@ async function confirmScopeWeek(){
   const existing=excepciones.findIndex(e=>e.claseId===claseId&&e.semanaOffset===calOffset);
   const exc={claseId, semanaOffset:calOffset, diaIdx:newDi, horaIdx:newHi, profeId:c.profe_id, cancelada:false};
   if(existing>=0) excepciones[existing]=exc; else excepciones.push(exc);
+  saveExcepcion(exc);
   renderCalendar();
   showToast(`${TIPO_L[c.tipo]} movido solo esta semana`);
   pendingMove=null;
@@ -1836,7 +1968,18 @@ async function guardarAlumno(){
       data.recuperativos_pendientes=0;
       const res=await dbInsert('alumnos',data);
       localAlumnos.push(res);
-      showToast('Alumno agregado');
+      closeModal('m-alumno');
+      renderAlumnoList();
+      // After creating, offer to assign classes
+      showAlert({
+        icon:'📅',
+        title:nombre+' creada',
+        msg:'¿Quieres asignar sus clases ahora para que aparezca en el calendario?',
+        confirmLabel:'Asignar clases',
+        cancelLabel:'Después',
+        onConfirm:()=>{ navigate('calendario'); setTimeout(()=>openInscribirAlumnoEnCalendario(res.id),300); }
+      });
+      return;
     }
     closeModal('m-alumno');renderAlumnoList();if(editingAlumnoId)renderAlumnoDetail(editingAlumnoId);
   }catch(e){showToast('Error al guardar','error');}
@@ -1920,6 +2063,88 @@ async function sacarAlumnoDeClase(alumnoId, claseId){
   renderAlumnoDetail(alumnoId);
   renderCalendar();
   showToast(a.nombre+' retirada de '+TIPO_L[c.tipo]);
+}
+
+
+// ── Inscribir alumno en clases desde el calendario ──────────
+function openInscribirAlumnoEnCalendario(alumnoId){
+  // Open a modal showing all classes with available space
+  // so user can pick which ones to assign the new alumno to
+  const a=localAlumnos.find(x=>x.id===alumnoId); if(!a) return;
+  selAlumnoId=alumnoId;
+
+  // Build list of all classes grouped by day
+  const modal=document.getElementById('m-inscribir');
+  const title=document.getElementById('mi-title');
+  const sub=document.getElementById('mi-sub');
+  if(!modal||!title) return;
+
+  title.textContent='Clases para '+a.nombre;
+  sub.textContent='Selecciona las clases de su horario semanal';
+
+  // Show all classes not yet assigned to this alumno
+  const inscritos=document.getElementById('mi-inscritos');
+  const disponibles=document.getElementById('mi-disponibles');
+  const search=document.getElementById('mi-search');
+  if(search) search.style.display='none'; // hide search for this flow
+
+  if(inscritos) inscritos.innerHTML='<div style="font-size:12px;color:var(--text3);padding:6px 0">Aún sin clases asignadas</div>';
+
+  if(disponibles){
+    disponibles.innerHTML='';
+    // Group by day
+    const porDia=Array.from({length:6},()=>[]);
+    localClases.forEach(c=>{ if(c.dia_semana<6) porDia[c.dia_semana].push(c); });
+
+    DIAS_F.forEach((dia,di)=>{
+      if(!porDia[di].length) return;
+      const dayLabel=document.createElement('div');
+      dayLabel.style.cssText='font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;padding:8px 2px 4px';
+      dayLabel.textContent=dia;
+      disponibles.appendChild(dayLabel);
+
+      porDia[di].forEach(c=>{
+        const yaInscrito=(c.inscritoIds||[]).includes(alumnoId);
+        const lleno=(c.inscritoIds||[]).length>=c.cupo;
+        const profe=localProfes.find(x=>x.id===c.profe_id);
+        const row=document.createElement('div');
+        row.className='alumno-sel-row'+(yaInscrito?' selected':'');
+        row.style.cssText='margin-bottom:4px;'+(yaInscrito?'background:var(--accent-light);':'');
+        row.innerHTML='<div class="alumno-sel-info">'
+          +'<div style="width:9px;height:9px;border-radius:2px;background:'+TIPO_DOT[c.tipo]+';flex-shrink:0"></div>'
+          +'<div><div style="font-size:13px;font-weight:500">'+TIPO_L[c.tipo]+' · '+HORAS[c.hora_idx]+'</div>'
+          +'<div style="font-size:11px;color:var(--text3)">'+(profe?profe.nombre:'—')+' · '+(c.inscritoIds||[]).length+'/'+c.cupo+' cupos</div></div>'
+          +'</div>'
+          +(yaInscrito
+            ?'<span style="font-size:11px;color:var(--accent);font-weight:600">✓ Inscrita</span>'
+            :lleno
+              ?'<span style="font-size:11px;color:var(--danger)">Llena</span>'
+              :(()=>{ const btn=document.createElement('button');
+                btn.style.cssText='font-size:11px;padding:3px 10px;border:1px solid var(--accent);border-radius:6px;background:var(--accent-light);color:var(--accent);cursor:pointer;font-family:DM Sans,sans-serif;font-weight:500';
+                btn.textContent='+ Agregar';
+                btn.onclick=()=>inscribirAlumnoDirecto(alumnoId,c.id,btn);
+                row.appendChild(btn); return ''; })());
+        disponibles.appendChild(row);
+      });
+    });
+  }
+  inscribirClaseId=null; // reset
+  openModal('m-inscribir');
+}
+
+async function inscribirAlumnoDirecto(alumnoId, claseId, btn){
+  const c=localClases.find(x=>x.id===claseId); if(!c) return;
+  const a=localAlumnos.find(x=>x.id===alumnoId); if(!a) return;
+  // Check conflict
+  const conflicto=hasHorarioConflict(alumnoId,claseId);
+  if(conflicto){ showToast(a.nombre+' ya tiene clase a esa hora','error'); return; }
+  c.inscritoIds=[...(c.inscritoIds||[]),alumnoId];
+  try{ await dbInsert('inscripciones',{alumno_id:alumnoId,clase_id:claseId,es_recuperativo:false}); }catch(e){}
+  // Update button to show inscribed
+  btn.parentNode.innerHTML='<span style="font-size:11px;color:var(--accent);font-weight:600">✓ Inscrita</span>';
+  btn.closest('.alumno-sel-row').style.background='var(--accent-light)';
+  renderCalendar();
+  showToast(a.nombre+' agregada a '+TIPO_L[c.tipo]+' del '+DIAS_F[c.dia_semana]);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -3299,7 +3524,8 @@ function openInscribirModal(claseId){
   const p=localProfes.find(x=>x.id===profeId);
   document.getElementById('mi-title').textContent=TIPO_L[c.tipo];
   document.getElementById('mi-sub').textContent=DIAS_F[c.dia_semana]+' · '+HORAS[c.hora_idx]+' — '+(p?p.nombre:'—')+' · '+(c.inscritoIds||[]).length+'/'+c.cupo+' cupos';
-  document.getElementById('mi-search').value='';
+  const searchEl=document.getElementById('mi-search');
+  if(searchEl){searchEl.value='';searchEl.style.display='';}
   renderInscribirInscritos();
   renderInscribirSearch();
   openModal('m-inscribir');
@@ -3385,6 +3611,42 @@ async function sacarAlumno(alumnoId){
 }
 
 
+
+// ── Recuperar contraseña ─────────────────────────────────────
+function mostrarRecuperarPassword(){
+  document.getElementById('recovery-email').value=document.getElementById('login-email').value||'';
+  document.getElementById('recovery-error').classList.remove('show');
+  document.getElementById('recovery-success').style.display='none';
+  document.getElementById('recovery-form').style.display='block';
+  document.getElementById('recovery-footer').style.display='flex';
+  openModal('m-recovery');
+}
+
+async function enviarRecovery(){
+  const email=document.getElementById('recovery-email').value.trim();
+  const err=document.getElementById('recovery-error');
+  if(!email){err.textContent='Ingresa tu email';err.classList.add('show');return;}
+  err.classList.remove('show');
+  if(USE_SUPABASE){
+    try{
+      const {error}=await db.auth.resetPasswordForEmail(email,{
+        redirectTo:'https://clemente-herrera.github.io/chichimolina'
+      });
+      if(error) throw error;
+      document.getElementById('recovery-success').style.display='block';
+      document.getElementById('recovery-form').style.display='none';
+      document.getElementById('recovery-footer').style.display='none';
+    }catch(e){
+      err.textContent='No se pudo enviar el email. Verifica que sea correcto.';
+      err.classList.add('show');
+    }
+  } else {
+    document.getElementById('recovery-success').style.display='block';
+    document.getElementById('recovery-form').style.display='none';
+    document.getElementById('recovery-footer').style.display='none';
+  }
+}
+
 // ════════════════════════════════════════════════════════════
 // AUTH — LOGIN / LOGOUT
 // ════════════════════════════════════════════════════════════
@@ -3439,19 +3701,7 @@ async function doLogout(){
 }
 
 // ── AJUSTES FUNCTIONS ────────────────────────────────────────
-function guardarPrecioStd(){
-  const val=parseInt(document.getElementById('precio-std-input').value)||180000;
-  // Update in memory — in production would save to DB settings table
-  showToast('Precio estándar actualizado a '+fmt(val));
-}
-
-function guardarTarifasStd(){
-  ['reformer','mat','chair','barrel','recuperativo'].forEach(t=>{
-    const el=document.getElementById('std-'+t);
-    if(el) ESTANDAR[t]=parseInt(el.value)||ESTANDAR[t];
-  });
-  showToast('Tarifas estándar actualizadas');
-}
+// guardarPrecioStd and guardarTarifasStd replaced by guardarPrecios()
 
 
 function renderAjustes(){
@@ -3561,6 +3811,372 @@ function fmtFechaCorta(fecha){
   const d=new Date(fecha+'T12:00:00');
   return d.toLocaleDateString('es-CL',{day:'numeric',month:'short',year:'numeric'});
 }
+
+// ════════════════════════════════════════════════════════════
+// PANEL DE CONTROL — AJUSTES
+// ════════════════════════════════════════════════════════════
+
+// ── Config state (persisted in localStorage) ─────────────────
+let appConfig = JSON.parse(localStorage.getItem('app_config')||JSON.stringify({
+  resendKey:'', notifProfes:true, notifRecup:true, notifDia:5, notifHora:'18:00',
+  precioStd:8000, periodoStd:'mensual', tiposExtra:[], horarios:null
+}));
+
+function saveAppConfig(){ localStorage.setItem('app_config', JSON.stringify(appConfig)); }
+
+// ── Render ajustes ────────────────────────────────────────────
+function renderAjustes(){
+  // Resend
+  if(appConfig.resendKey){
+    const el=document.getElementById('resend-key');
+    if(el) el.value=appConfig.resendKey;
+    const st=document.getElementById('resend-status');
+    if(st){st.textContent='✓ API key configurada';st.style.color='var(--accent)';}
+  }
+  // Notif config
+  const nd=document.getElementById('notif-dia'); if(nd) nd.value=appConfig.notifDia||5;
+  const nh=document.getElementById('notif-hora'); if(nh) nh.value=appConfig.notifHora||'18:00';
+  const np=document.getElementById('notif-profes'); if(np) np.checked=appConfig.notifProfes!==false;
+  const nr=document.getElementById('notif-recup'); if(nr) nr.checked=appConfig.notifRecup!==false;
+  // Precios
+  const ps=document.getElementById('precio-std-input'); if(ps) ps.value=appConfig.precioStd||8000;
+  const pp=document.getElementById('periodo-std'); if(pp) pp.value=appConfig.periodoStd||'mensual';
+  // Tarifas
+  renderTarifasStd();
+  // Tipos de clase
+  renderTiposClase();
+  // Horarios
+  renderHorariosList();
+  // Feriados
+  renderFeriadosList();
+  // Historial
+  renderHistorial();
+}
+
+// ── Notificaciones ────────────────────────────────────────────
+function guardarResendKey(){
+  const key=document.getElementById('resend-key').value.trim();
+  if(!key){showToast('Ingresa la API key','error');return;}
+  appConfig.resendKey=key; saveAppConfig();
+  const st=document.getElementById('resend-status');
+  if(st){st.textContent='✓ API key guardada';st.style.color='var(--accent)';}
+  showToast('API key guardada');
+}
+
+function guardarConfigNotif(){
+  appConfig.notifDia=parseInt(document.getElementById('notif-dia').value);
+  appConfig.notifHora=document.getElementById('notif-hora').value;
+  appConfig.notifProfes=document.getElementById('notif-profes').checked;
+  appConfig.notifRecup=document.getElementById('notif-recup').checked;
+  saveAppConfig();
+  showToast('Configuración guardada');
+}
+
+async function enviarEmail(to, subject, html){
+  if(!appConfig.resendKey){showToast('Configura el API key de Resend primero','error');return false;}
+  try{
+    const res=await fetch('https://api.resend.com/emails',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+appConfig.resendKey},
+      body:JSON.stringify({from:'ChichiMolina Pilates <onboarding@resend.dev>',to,subject,html})
+    });
+    return res.ok;
+  }catch(e){showToast('Error al enviar email','error');return false;}
+}
+
+async function enviarResumenAhora(){
+  if(!appConfig.resendKey){showToast('Configura el API key de Resend primero','error');return;}
+  const dates=getWeekDates(1); // next week
+  let enviados=0;
+  for(const p of localProfes){
+    if(!p.email) continue;
+    const clasesProfe=localClases.filter(c=>c.profe_id===p.id);
+    if(!clasesProfe.length) continue;
+    const rows=clasesProfe.map(c=>`<tr><td>${DIAS_F[c.dia_semana]}</td><td>${HORAS[c.hora_idx]}</td><td>${TIPO_L[c.tipo]}</td><td>${(c.inscritoIds||[]).length}/${c.cupo}</td></tr>`).join('');
+    const html=`<h2>Hola ${p.nombre} 👋</h2><p>Este es tu horario para la semana del ${dates[0].toLocaleDateString('es-CL')}:</p>
+      <table border="1" cellpadding="8" style="border-collapse:collapse;font-family:sans-serif">
+        <tr><th>Día</th><th>Hora</th><th>Tipo</th><th>Alumnos</th></tr>${rows}
+      </table><p>¡Que tengas una excelente semana!</p><p><i>ChichiMolina Pilates</i></p>`;
+    const ok=await enviarEmail(p.email,'Tu horario de la semana — ChichiMolina',html);
+    if(ok) enviados++;
+  }
+  showToast(enviados>0?'Resumen enviado a '+enviados+' profesora'+(enviados!==1?'s':''):'No se pudo enviar ningún email','error');
+  registrarCambio('Resumen semanal enviado a '+enviados+' profesoras');
+}
+
+async function invitarAdmin(){
+  const email=document.getElementById('invite-email').value.trim();
+  if(!email){showToast('Ingresa un email','error');return;}
+  if(USE_SUPABASE){
+    try{
+      const {error}=await db.auth.admin.inviteUserByEmail(email);
+      if(error) throw error;
+      document.getElementById('invite-status').textContent='✓ Invitación enviada a '+email;
+      document.getElementById('invite-email').value='';
+      showToast('Invitación enviada a '+email);
+      registrarCambio('Admin invitado: '+email);
+    }catch(e){
+      // Fallback: use resend
+      const ok=await enviarEmail(email,'Invitación a ChichiMolina Pilates',
+        '<h2>Te han invitado como administrador</h2><p>Accede en: <a href="https://clemente-herrera.github.io/chichimolina">ChichiMolina Pilates</a></p>');
+      if(ok){document.getElementById('invite-status').textContent='✓ Email enviado a '+email;}
+      else showToast('Error al enviar invitación','error');
+    }
+  }
+}
+
+// ── Tipos de clase ────────────────────────────────────────────
+function renderTiposClase(){
+  const el=document.getElementById('tipos-clase-list'); if(!el) return;
+  const tiposBase=['reformer','mat','chair','barrel','recuperativo'];
+  const tiposExtra=appConfig.tiposExtra||[];
+  el.innerHTML='';
+  [...tiposBase,...tiposExtra].forEach(t=>{
+    const esBase=tiposBase.includes(t);
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)';
+    const left=document.createElement('div');
+    left.style.cssText='display:flex;align-items:center;gap:10px';
+    const dot=document.createElement('div');
+    dot.style.cssText='width:10px;height:10px;border-radius:2px;background:'+(TIPO_DOT[t]||'#888')+';flex-shrink:0';
+    const label=document.createElement('div');
+    label.style.cssText='font-size:13px;font-weight:500';
+    label.textContent=TIPO_L[t]||t;
+    left.appendChild(dot); left.appendChild(label);
+    if(esBase){
+      const badge=document.createElement('span');
+      badge.style.cssText='font-size:10px;color:var(--text3);padding:1px 6px;border:1px solid var(--border);border-radius:10px';
+      badge.textContent='Base';
+      left.appendChild(badge);
+    }
+    row.appendChild(left);
+    if(!esBase){
+      const btn=document.createElement('button');
+      btn.style.cssText='font-size:11px;color:var(--danger);border:1px solid var(--danger);background:none;border-radius:5px;padding:2px 8px;cursor:pointer;font-family:DM Sans,sans-serif';
+      btn.textContent='Eliminar';
+      btn.onclick=()=>eliminarTipoClase(t);
+      row.appendChild(btn);
+    }
+    el.appendChild(row);
+  });
+}
+
+function agregarTipoClase(){
+  showAlert({icon:'🏋️',title:'Nuevo tipo de clase',msg:'',confirmLabel:'Agregar',cancelLabel:'Cancelar',
+    onConfirm:()=>{
+      const nombre=prompt('Nombre del nuevo tipo (ej: Cadillac):');
+      if(!nombre||!nombre.trim()) return;
+      const key=nombre.trim().toLowerCase().replace(/\s+/g,'_');
+      if(!appConfig.tiposExtra) appConfig.tiposExtra=[];
+      appConfig.tiposExtra.push(key);
+      TIPO_L[key]=nombre.trim();
+      TIPO_DOT[key]='#888';
+      saveAppConfig();
+      renderTiposClase();
+      showToast(nombre+' agregado');
+      registrarCambio('Tipo de clase agregado: '+nombre);
+    }
+  });
+  // Use prompt directly
+  const nombre=prompt('Nombre del nuevo tipo de clase (ej: Cadillac):');
+  if(!nombre||!nombre.trim()) return;
+  const key=nombre.trim().toLowerCase().replace(/\s+/g,'_');
+  if(!appConfig.tiposExtra) appConfig.tiposExtra=[];
+  if(!appConfig.tiposExtra.includes(key)){
+    appConfig.tiposExtra.push(key);
+    TIPO_L[key]=nombre.trim();
+    TIPO_DOT[key]='#888888';
+    saveAppConfig();
+    renderTiposClase();
+    showToast(nombre.trim()+' agregado');
+    registrarCambio('Tipo de clase agregado: '+nombre.trim());
+  }
+}
+
+function eliminarTipoClase(key){
+  if(!confirm('¿Eliminar el tipo "'+TIPO_L[key]+'"? Solo se puede eliminar si no tiene clases asignadas.')) return;
+  const tieneClases=localClases.some(c=>c.tipo===key);
+  if(tieneClases){showToast('No se puede eliminar — hay clases de este tipo','error');return;}
+  appConfig.tiposExtra=(appConfig.tiposExtra||[]).filter(t=>t!==key);
+  delete TIPO_L[key]; delete TIPO_DOT[key];
+  saveAppConfig();
+  renderTiposClase();
+  showToast('Tipo eliminado');
+}
+
+// ── Horarios disponibles ──────────────────────────────────────
+function renderHorariosList(){
+  const el=document.getElementById('horarios-list'); if(!el) return;
+  el.innerHTML='';
+  HORAS.forEach((h,i)=>{
+    const chip=document.createElement('div');
+    chip.style.cssText='display:flex;align-items:center;gap:5px;padding:5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:500';
+    chip.innerHTML=h+'<button onclick="eliminarHorario('+i+')" style="border:none;background:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 2px;line-height:1">×</button>';
+    el.appendChild(chip);
+  });
+}
+
+function agregarHorario(){
+  const hora=prompt('Ingresa la hora (formato HH:00, ej: 20:00):');
+  if(!hora||!/^\d{2}:00$/.test(hora)){showToast('Formato inválido. Usa HH:00','error');return;}
+  if(HORAS.includes(hora)){showToast('Ese horario ya existe','error');return;}
+  HORAS.push(hora);
+  HORAS.sort();
+  if(!appConfig.horasExtra) appConfig.horasExtra=[];
+  appConfig.horasExtra.push(hora);
+  saveAppConfig();
+  renderHorariosList();
+  showToast(hora+' agregado al calendario');
+  registrarCambio('Horario agregado: '+hora);
+}
+
+function eliminarHorario(idx){
+  const hora=HORAS[idx];
+  const tieneClases=localClases.some(c=>c.hora_idx===idx);
+  if(tieneClases){showToast('No se puede eliminar — hay clases a las '+hora,'error');return;}
+  HORAS.splice(idx,1);
+  saveAppConfig();
+  renderHorariosList();
+  showToast(hora+' eliminado del calendario');
+}
+
+// ── Tarifas estándar ──────────────────────────────────────────
+function renderTarifasStd(){
+  const el=document.getElementById('tarifas-std-list'); if(!el) return;
+  el.innerHTML='';
+  Object.keys(TIPO_L).forEach(t=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:12px';
+    row.innerHTML='<div style="width:110px;font-size:13px;font-weight:500">'+TIPO_L[t]+'</div>'
+      +'<input type="number" class="field-input" id="std-'+t+'" style="max-width:120px" value="'+(ESTANDAR[t]||0)+'">';
+    el.appendChild(row);
+  });
+}
+
+function guardarPrecios(){
+  appConfig.precioStd=parseInt(document.getElementById('precio-std-input').value)||8000;
+  appConfig.periodoStd=document.getElementById('periodo-std').value;
+  PRECIO_STD=appConfig.precioStd;
+  Object.keys(TIPO_L).forEach(t=>{
+    const el=document.getElementById('std-'+t);
+    if(el) ESTANDAR[t]=parseInt(el.value)||0;
+  });
+  saveAppConfig();
+  showToast('Precios y tarifas guardados');
+  registrarCambio('Precios actualizados');
+}
+
+// ── Feriados ──────────────────────────────────────────────────
+function renderFeriadosList(){
+  const el=document.getElementById('feriados-list'); if(!el) return;
+  el.innerHTML='';
+  Object.entries(FERIADOS_CHILE).sort(([a],[b])=>a.localeCompare(b)).forEach(([fecha,nombre])=>{
+    const d=new Date(fecha+'T12:00:00');
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)';
+    const info=document.createElement('div');
+    info.innerHTML='<div style="font-size:13px;font-weight:500">'+nombre+'</div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+d.toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</div>';
+    const btn=document.createElement('button');
+    btn.style.cssText='font-size:11px;color:var(--danger);border:1px solid var(--danger);background:none;border-radius:5px;padding:2px 8px;cursor:pointer;font-family:DM Sans,sans-serif';
+    btn.textContent='Quitar';
+    btn.onclick=()=>eliminarFeriado(fecha);
+    row.appendChild(info); row.appendChild(btn);
+    el.appendChild(row);
+  });
+}
+
+function agregarFeriado(){
+  const fecha=prompt('Fecha del feriado (formato YYYY-MM-DD, ej: 2026-08-15):');
+  if(!fecha||!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){showToast('Formato inválido. Usa YYYY-MM-DD','error');return;}
+  const nombre=prompt('Nombre del feriado:');
+  if(!nombre||!nombre.trim()) return;
+  FERIADOS_CHILE[fecha]=nombre.trim();
+  renderFeriadosList();
+  showToast('Feriado agregado');
+  registrarCambio('Feriado agregado: '+nombre.trim()+' ('+fecha+')');
+}
+
+function eliminarFeriado(fecha){
+  delete FERIADOS_CHILE[fecha];
+  renderFeriadosList();
+  showToast('Feriado eliminado');
+}
+
+// ── Historial de cambios ──────────────────────────────────────
+let historialCambios=JSON.parse(localStorage.getItem('historial_cambios')||'[]');
+
+function registrarCambio(descripcion){
+  const entry={fecha:new Date().toISOString(),desc:descripcion};
+  historialCambios.unshift(entry);
+  if(historialCambios.length>100) historialCambios=historialCambios.slice(0,100);
+  localStorage.setItem('historial_cambios',JSON.stringify(historialCambios));
+}
+
+function renderHistorial(){
+  const el=document.getElementById('historial-list'); if(!el) return;
+  if(!historialCambios.length){
+    el.innerHTML='<div style="font-size:13px;color:var(--text3)">Los cambios importantes se registran automáticamente aquí.</div>';
+    return;
+  }
+  el.innerHTML='';
+  historialCambios.slice(0,30).forEach(e=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:flex-start;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);gap:12px';
+    const d=new Date(e.fecha);
+    row.innerHTML='<div style="font-size:13px">'+e.desc+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);white-space:nowrap">'+d.toLocaleDateString('es-CL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</div>';
+    el.appendChild(row);
+  });
+}
+
+// ── Exportar datos ────────────────────────────────────────────
+function exportarCSV(rows, filename){
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportarAlumnos(){
+  const rows=[['Nombre','Apellido','Email','Teléfono','Dirección','Cumpleaños','Precio/clase','Período','Recuperativos','Notas']];
+  localAlumnos.forEach(a=>rows.push([a.nombre,a.apellido,a.email||'',a.telefono||'',a.direccion||'',a.fecha_nacimiento||'',a.precio_por_clase||0,a.periodo_pago||'',a.recuperativos_pendientes||0,a.notas||'']));
+  exportarCSV(rows,'alumnos_chichimolina.csv');
+  registrarCambio('Exportación: alumnos');
+  showToast('Alumnos exportados');
+}
+
+function exportarClases(){
+  const rows=[['Tipo','Día','Hora','Profesora','Cupo','Alumnos inscritos']];
+  localClases.forEach(c=>{
+    const p=localProfes.find(x=>x.id===c.profe_id);
+    const inscritos=localAlumnos.filter(a=>(c.inscritoIds||[]).includes(a.id)).map(a=>a.nombre+' '+a.apellido).join('; ');
+    rows.push([TIPO_L[c.tipo],DIAS_F[c.dia_semana],HORAS[c.hora_idx],p?p.nombre+' '+p.apellido:'—',c.cupo,inscritos]);
+  });
+  exportarCSV(rows,'clases_chichimolina.csv');
+  registrarCambio('Exportación: clases');
+  showToast('Clases exportadas');
+}
+
+function exportarPagos(){
+  const rows=[['Alumno','Período','Monto','Fecha','Método']];
+  localPagosA.forEach(p=>{
+    const a=localAlumnos.find(x=>x.id===p.alumno_id);
+    rows.push([a?a.nombre+' '+a.apellido:'—',p.trimestre||'',p.monto,p.fecha_pago||'',p.metodo||'']);
+  });
+  exportarCSV(rows,'pagos_chichimolina.csv');
+  registrarCambio('Exportación: pagos');
+  showToast('Pagos exportados');
+}
+
+function exportarTodo(){
+  exportarAlumnos();
+  setTimeout(()=>exportarClases(),300);
+  setTimeout(()=>exportarPagos(),600);
+  showToast('Exportando todo...');
+}
+
 // ════════════════════════════════════════════════════════════
 // TOAST
 // ════════════════════════════════════════════════════════════
