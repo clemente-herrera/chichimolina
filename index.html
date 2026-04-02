@@ -919,7 +919,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
         <input class="field-input" id="mpa-fecha" type="date" value="2026-03-27">
       </div>
       <div class="field-group"><label class="field-label">Método</label>
-        <select class="field-select" id="mpa-metodo"><option>Transferencia</option><option>Efectivo</option><option>Débito</option></select>
+        <select class="field-select" id="mpa-metodo"><option>Transferencia</option><option>Efectivo</option><option>Cheque</option></select>
       </div>
     </div>
     <div class="modal-footer"><button class="btn-secondary" onclick="closeModal('m-pago-alumno')">Cancelar</button><button class="btn-primary" onclick="confirmarPagoAlumno()">Registrar</button></div>
@@ -1659,23 +1659,37 @@ function renderAlumnoDetail(id){
         <button class="btn-primary" onclick="openPagoAlumnoModal('${a.id}')">Registrar pago</button>
       </div>
     </div>
-    <div class="cards-grid">
-      <div class="info-card"><div class="info-card-label">Estado Q1 2026</div>
-        <div class="info-card-val ${ep==='pagado'?'ok':ep==='parcial'?'warn':'danger'}">${ep==='pagado'?'Pagado':ep==='parcial'?'Parcial':'Pendiente'}</div>
-        <div class="info-card-sub">${ep==='pagado'?'Al día':ep==='parcial'?'Saldo: '+fmt(precio-totalPagado):'Debe '+fmt(precio)}</div></div>
-      <div class="info-card"><div class="info-card-label">Precio por clase</div>
-        <div class="info-card-val">${fmt(a.precio_por_clase||0)}</div>
-        <div class="info-card-sub">${getPeriodoLabel(a.periodo_pago||'mensual')} · ${contarClasesEnPeriodo(a.id,new Date(TODAY.getFullYear(),TODAY.getMonth(),1).toISOString().split('T')[0],{mensual:1,bimensual:2,trimestral:3}[a.periodo_pago||'mensual']||1)} clases este periodo</div></div>
-      <div class="info-card"><div class="info-card-label">Recuperativos</div>
-        <div class="info-card-val ${recup>0?'warn':'ok'}">${recup}</div>
-        <div class="info-card-sub">${recup>0?'Pendientes por usar':'Sin recuperativos'}</div></div>
-    </div>
+    ${(()=>{
+      const periodoStatus=getCurrentPeriodStatus(a);
+      const ep2=periodoStatus.estado;
+      const clasesHoy=contarClasesEnPeriodo(a.id,new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().split('T')[0],{mensual:1,bimensual:2,trimestral:3}[a.periodo_pago||'mensual']||1);
+      const asistTotal=localAsistencias.filter(x=>x.alumno_id===a.id&&x.estado==='presente').length;
+      const faltasTotal=localAsistencias.filter(x=>x.alumno_id===a.id&&x.estado==='ausente').length;
+      return '<div class="cards-grid">'
+        +'<div class="info-card"><div class="info-card-label">Estado de pago</div>'
+        +'<div class="info-card-val '+(ep2==='pagado'?'ok':'danger')+'">'+(ep2==='pagado'?'Al día':'Pendiente')+'</div>'
+        +'<div class="info-card-sub">'+(ep2==='pagado'&&periodoStatus.fin?'Hasta '+periodoStatus.fin.toLocaleDateString('es-CL',{day:'numeric',month:'short'}):'Sin período activo')+'</div></div>'
+        +'<div class="info-card"><div class="info-card-label">Precio por clase</div>'
+        +'<div class="info-card-val">'+fmt(a.precio_por_clase||0)+'</div>'
+        +'<div class="info-card-sub">'+getPeriodoLabel(a.periodo_pago||'mensual')+' · '+clasesHoy.total+' clases este período</div></div>'
+        +'<div class="info-card"><div class="info-card-label">Asistencia total</div>'
+        +'<div class="info-card-val ok">'+asistTotal+'</div>'
+        +'<div class="info-card-sub">'+faltasTotal+' falta'+(faltasTotal!==1?'s':'')+' registradas</div></div>'
+        +'</div>';
+    })()}
     <div class="section">
-      <div class="section-header"><div class="section-title">Clases inscritas</div></div>
-      <div>${clasesAlumno.length?clasesAlumno.map(c=>`
-        <div class="clase-row"><div class="clase-dot" style="background:${TIPO_DOT[c.tipo]}"></div>
-          <div><div style="font-size:13px;font-weight:500">${TIPO_L[c.tipo]}</div>
-          <div style="font-size:11px;color:var(--text3)">${DIAS_F[c.dia_semana]} · ${HORAS[c.hora_idx]}</div></div></div>`).join('')
+      <div class="section-header"><div class="section-title">Clases inscritas</div>
+        <div class="section-sub">${clasesAlumno.length} clase${clasesAlumno.length!==1?'s':''}/semana</div></div>
+      <div>${clasesAlumno.length?clasesAlumno.map(c=>{
+        const profe=localProfes.find(p=>p.id===c.profe_id);
+        const asistencias=localAsistencias.filter(a=>a.alumno_id===id&&a.clase_id===c.id);
+        const presentes=asistencias.filter(a=>a.estado==='presente').length;
+        const ausentes=asistencias.filter(a=>a.estado==='ausente').length;
+        return `<div class="clase-row"><div class="clase-dot" style="background:${TIPO_DOT[c.tipo]}"></div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:500">${TIPO_L[c.tipo]}</div>
+          <div style="font-size:11px;color:var(--text3)">${DIAS_F[c.dia_semana]} ${HORAS[c.hora_idx]} · ${profe?profe.nombre:'—'}</div>
+          ${asistencias.length>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">${presentes} presente${presentes!==1?'s':''} · ${ausentes} ausencia${ausentes!==1?'s':''}</div>`:''}</div>
+          </div>`;}).join('')
         :`<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin clases inscritas</div>`}</div>
     </div>
     <div class="section">
@@ -1686,6 +1700,22 @@ function renderAlumnoDetail(id){
           <div style="font-size:11px;color:var(--text3)">Sin fecha asignada</div></div>
           <button class="btn-ghost" style="font-size:12px" onclick="showToast('Asignar a clase próximamente')">Asignar</button></div>`).join('')
         :`<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin recuperativos pendientes</div>`}</div>
+    </div>
+    <div class="section">
+      <div class="section-header"><div class="section-title">Historial de asistencia</div>
+        <div class="section-sub" id="asist-summary-${a.id}"></div></div>
+      <div>${(()=>{
+        const asists=getAlumnoAsistencias(a.id).slice(0,10);
+        if(!asists.length) return '<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin asistencias registradas aún</div>';
+        return asists.map(x=>{
+          const c=localClases.find(cl=>cl.id===x.clase_id);
+          return '<div class="pago-row">'
+            +'<div><div style="font-size:13px;font-weight:500">'+(c?TIPO_L[c.tipo]:'Clase')+'</div>'
+            +'<div style="font-size:11px;color:var(--text3)">'+x.fecha+'</div></div>'
+            +'<span class="badge '+(x.estado==='presente'?'pagado':'pendiente')+'">'+(x.estado==='presente'?'Presente':'Ausente')+'</span>'
+            +'</div>';
+        }).join('');
+      })()}</div>
     </div>
     <div class="section">
       <div class="section-header"><div class="section-title">Historial de pagos</div></div>
@@ -1863,23 +1893,39 @@ function renderProfeDetail(id){
         <button class="btn-primary" onclick="openPagoProfeModal('${p.id}')">Registrar pago</button>
       </div>
     </div>
-    <div class="cards-grid">
-      <div class="info-card"><div class="info-card-label">Clases/semana</div>
-        <div class="info-card-val ok">${clasesProfe.length}</div>
-        <div class="info-card-sub">${[...new Set(clasesProfe.map(c=>TIPO_L[c.tipo]))].join(', ')||'—'}</div></div>
-      <div class="info-card"><div class="info-card-label">Pago mensual est.</div>
-        <div class="info-card-val">${fmt(m)}</div>
-        <div class="info-card-sub">${fmt(m/4)}/semana</div></div>
-      <div class="info-card"><div class="info-card-label">Total pagado</div>
-        <div class="info-card-val ok">${fmt(pagosProfe.reduce((s,x)=>s+x.monto,0))}</div>
-        <div class="info-card-sub">${pagosProfe.length} pago${pagosProfe.length!==1?'s':''} registrados</div></div>
-    </div>
-    <div class="resumen-card">
-      <div><div style="font-size:13px;color:var(--text2)">A pagar — Marzo 2026</div>
-        <div class="resumen-monto">${fmt(m)}</div>
-        <div style="font-size:11px;color:var(--text3)">${clasesProfe.length} clases/sem × 4 semanas</div></div>
-      <button class="btn-primary" onclick="openPagoProfeModal('${p.id}')">Registrar pago</button>
-    </div>
+    ${(()=>{
+      const pagoReal=getPagoRealProfe(id,0);
+      const clasesDictadas=getClasesDictadasProfe(id,0);
+      const mesLabel=MESES[TODAY.getMonth()];
+      return `<div class="cards-grid">
+        <div class="info-card"><div class="info-card-label">Clases/semana (horario)</div>
+          <div class="info-card-val ok">${clasesProfe.length}</div>
+          <div class="info-card-sub">${[...new Set(clasesProfe.map(c=>TIPO_L[c.tipo]))].join(', ')||'—'}</div></div>
+        <div class="info-card"><div class="info-card-label">Clases dictadas ${mesLabel}</div>
+          <div class="info-card-val ${clasesDictadas.totalClases>0?'ok':'warn'}">${clasesDictadas.totalClases}</div>
+          <div class="info-card-sub">${clasesDictadas.totalClases>0?fmt(pagoReal)+' según asistencia':'Sin asistencias registradas este mes'}</div></div>
+        <div class="info-card"><div class="info-card-label">Total pagado historial</div>
+          <div class="info-card-val ok">${fmt(pagosProfe.reduce((s,x)=>s+x.monto,0))}</div>
+          <div class="info-card-sub">${pagosProfe.length} pago${pagosProfe.length!==1?'s':''} registrados</div></div>
+      </div>`;
+    })()}
+    ${(()=>{
+      const pagoReal=getPagoRealProfe(id,0);
+      const clasesDictadas=getClasesDictadasProfe(id,0);
+      const mesLabel=MESES[TODAY.getMonth()]+' '+TODAY.getFullYear();
+      const montoSugerido=clasesDictadas.totalClases>0?pagoReal:m;
+      return `<div class="resumen-card">
+        <div>
+          <div style="font-size:13px;color:var(--text2)">A pagar — ${mesLabel}</div>
+          <div class="resumen-monto">${fmt(montoSugerido)}</div>
+          <div style="font-size:11px;color:var(--text3)">${clasesDictadas.totalClases>0
+            ?clasesDictadas.totalClases+' clases dictadas según asistencia'
+            :'Estimado: '+clasesProfe.length+' clases/sem × 4 semanas'}</div>
+          ${clasesDictadas.totalClases===0?`<div style="font-size:11px;color:var(--warning);margin-top:4px">⚠ Sin asistencias registradas — usando estimado</div>`:''}
+        </div>
+        <button class="btn-primary" onclick="openPagoProfeModal('${p.id}')">Registrar pago</button>
+      </div>`;
+    })()}
     <div class="section">
       <div class="section-header"><div class="section-title">Horario semanal</div></div>
       <div class="horario-grid">${DIAS_S.map((d,di)=>`
@@ -1903,6 +1949,22 @@ function renderProfeDetail(id){
             <button class="edit-btn-sm" onclick="openTarifaModal('${p.id}','${tipo}')">Editar</button>
           </div></div>`}).join('')}
       </div>
+    </div>
+    <div class="section">
+      <div class="section-header"><div class="section-title">Historial de asistencia</div>
+        <div class="section-sub" id="asist-summary-${a.id}"></div></div>
+      <div>${(()=>{
+        const asists=getAlumnoAsistencias(a.id).slice(0,10);
+        if(!asists.length) return '<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin asistencias registradas aún</div>';
+        return asists.map(x=>{
+          const c=localClases.find(cl=>cl.id===x.clase_id);
+          return '<div class="pago-row">'
+            +'<div><div style="font-size:13px;font-weight:500">'+(c?TIPO_L[c.tipo]:'Clase')+'</div>'
+            +'<div style="font-size:11px;color:var(--text3)">'+x.fecha+'</div></div>'
+            +'<span class="badge '+(x.estado==='presente'?'pagado':'pendiente')+'">'+(x.estado==='presente'?'Presente':'Ausente')+'</span>'
+            +'</div>';
+        }).join('');
+      })()}</div>
     </div>
     <div class="section">
       <div class="section-header"><div class="section-title">Historial de pagos</div></div>
@@ -2008,10 +2070,16 @@ async function resetTarifa(){
   closeModal('m-tarifa');renderProfeDetail(editingTarifa.profeId);renderProfeList();showToast('Tarifa vuelve al estándar');
 }
 function openPagoProfeModal(id){
-  pagoProfeId=id;const p=localProfes.find(x=>x.id===id);const m=getMensualProfe(p);
+  pagoProfeId=id;const p=localProfes.find(x=>x.id===id);
+  const pagoReal=getPagoRealProfe(id,0);
+  const {totalClases}=getClasesDictadasProfe(id,0);
+  const m=getMensualProfe(p);
+  const montoSugerido=totalClases>0?pagoReal:m;
   document.getElementById('mpp-title').textContent='Pago a '+p.nombre+' '+p.apellido;
-  document.getElementById('mpp-monto').value=m;
-  document.getElementById('mpp-hint').textContent='Estimado del mes: '+fmt(m);
+  document.getElementById('mpp-monto').value=montoSugerido;
+  document.getElementById('mpp-hint').textContent=totalClases>0
+    ?totalClases+' clases dictadas × tarifa = '+fmt(pagoReal)
+    :'Estimado (sin asistencias): '+fmt(m);
   openModal('m-pago-profe');
 }
 async function confirmarPagoProfe(){
@@ -2039,16 +2107,45 @@ function getFinLabel(){
 }
 function renderFinanzas(){
   document.getElementById('fin-period-label').textContent=getFinLabel();
+  // Get current period start based on finPeriod/finOffset
+  const periodoInicio=new Date(TODAY.getFullYear(),TODAY.getMonth()+finOffset,1);
+  const periodoInicioStr=periodoInicio.toISOString().split('T')[0];
+
   const cobros=localAlumnos.map(a=>{
-    const pagos=getAlumnosPagos(a.id);
-    const precio=getPrecio(a);const pagado=pagos.reduce((s,p)=>s+p.monto,0);
-    return {id:a.id,nombre:a.nombre+' '+a.apellido,precio,pagado,saldo:Math.max(0,precio-pagado),estado:estadoPago(a,pagos)};
+    // Only pagos for current period
+    const todosPagos=getAlumnosPagos(a.id);
+    const pagosDelPeriodo=todosPagos.filter(p=>{
+      if(!p.trimestre) return false;
+      const partes=p.trimestre.split(' / ');
+      if(partes.length<2) return false;
+      const finPago=new Date(partes[1]+'T12:00:00');
+      const inicioPago=new Date(partes[0]+'T12:00:00');
+      return inicioPago>=periodoInicio||finPago>=periodoInicio;
+    });
+    const {total:clasesEsperadas}=contarClasesEnPeriodo(a.id, periodoInicioStr,
+      {mensual:1,bimensual:2,trimestral:3}[a.periodo_pago||'mensual']||1);
+    const precio=(a.precio_por_clase||0)*clasesEsperadas;
+    const pagado=pagosDelPeriodo.reduce((s,p)=>s+p.monto,0);
+    const ep=pagado===0?'pendiente':pagado>=precio?'pagado':'parcial';
+    return {id:a.id,nombre:a.nombre+' '+a.apellido,precio,pagado,
+      saldo:Math.max(0,precio-pagado),estado:ep,clasesEsperadas};
   });
+  const {start:mesStart,end:mesEnd}=getCurrentMonthRange();
   const pd=localProfes.map(p=>{
     const pgs=localPagosP.filter(x=>x.profe_id===p.id);
+    const {total:dictadas}=getClasesDictadasProfe(p.id,mesStart,mesEnd);
+    const clasesP=localClases.filter(c=>c.profe_id===p.id);
     const m=getMensualProfe(p);
-    return {id:p.id,nombre:p.nombre+' '+p.apellido,color:p.color,mensual:m,
-      estado:pgs.length?'registrado':'pendiente',fecha:pgs.length?pgs[pgs.length-1].fecha_pago:null};
+    // Real pay based on attendance, fallback to estimate
+    const pagoReal=dictadas>0
+      ?localAsistencias.filter(a=>a.estado==='presente'&&a.fecha>=mesStart&&a.fecha<=mesEnd&&clasesP.some(c=>c.id===a.clase_id))
+        .reduce((s,a)=>{const c=clasesP.find(x=>x.id===a.clase_id);return s+(c?(p['tarifa_'+c.tipo]??ESTANDAR[c.tipo]??0):0);},0)
+      :m;
+    const pagoEsteMes=pgs.find(x=>x.mes===getFinLabel());
+    return {id:p.id,nombre:p.nombre+' '+p.apellido,color:p.color,
+      mensual:pagoReal,dictadas,
+      estado:pagoEsteMes?'registrado':'pendiente',
+      fecha:pagoEsteMes?pagoEsteMes.fecha_pago:null};
   });
   const ingresos=cobros.reduce((s,c)=>s+c.pagado,0);
   const pendienteCobro=cobros.reduce((s,c)=>s+c.saldo,0);
@@ -2071,12 +2168,20 @@ function renderFinanzas(){
       <div class="section">
         <div class="section-header"><div class="section-title">Cobros a alumnos</div>
           <div class="section-sub">${cobros.filter(c=>c.estado==='pagado').length}/${cobros.length} pagados</div></div>
-        <table class="fin-table"><thead><tr><th>Alumno</th><th class="right">Precio</th><th class="right">Pagado</th><th class="right">Estado</th><th></th></tr></thead>
+        <table class="fin-table"><thead><tr><th>Alumno</th><th class="right">Clases</th><th class="right">Monto</th><th class="right">Método</th><th class="right">Estado</th><th></th></tr></thead>
         <tbody>${cobros.map(c=>`<tr>
-          <td><div class="cell-with-avatar"><div class="mini-avatar" style="background:${col(c.id)}">${ini(c.nombre)}</div><span style="font-weight:500">${c.nombre}</span></div></td>
-          <td class="td-right">${fmt(c.precio)}</td><td class="td-right">${fmt(c.pagado)}</td>
-          <td class="td-right"><span class="badge ${c.estado}">${c.estado==='pagado'?'Pagado':c.estado==='parcial'?'Parcial':'Pendiente'}</span></td>
-          <td class="td-right">${c.estado!=='pagado'?`<button class="btn-ghost" style="font-size:11px;padding:3px 8px" onclick="navigate('alumnos');setTimeout(()=>{selAlumnoId='${c.id}';renderAlumnoList();renderAlumnoDetail('${c.id}');openPagoAlumnoModal('${c.id}');},100)">Registrar</button>`:`<span style="font-size:11px;color:var(--text3)">✓</span>`}</td>
+          <td><div class="cell-with-avatar"><div class="mini-avatar" style="background:${col(c.id)}">${ini(c.nombre)}</div>
+            <div><div style="font-weight:500">${c.nombre}</div>
+            <div style="font-size:10px;color:var(--text3)">${c.periodo?c.periodo.replace(' / ',' → '):'Sin período'}</div></div></div></td>
+          <td class="td-right" style="font-size:12px">${c.clases||'—'}</td>
+          <td class="td-right">${fmt(c.precio)}</td>
+          <td class="td-right" style="font-size:11px;color:var(--text2)">${c.metodo}</td>
+          <td class="td-right"><span class="badge ${c.estado}">${c.estado==='pagado'?'Pagado':'Pendiente'}</span></td>
+          <td class="td-right" style="display:flex;gap:4px;justify-content:flex-end">
+            ${c.estado!=='pagado'
+              ?`<button class="btn-ghost" style="font-size:11px;padding:3px 8px" onclick="navigate('alumnos');setTimeout(()=>{selAlumnoId='${c.id}';renderAlumnoList();renderAlumnoDetail('${c.id}');openPagoAlumnoModal('${c.id}');},100)">Cobrar</button>`
+              :`<button class="btn-ghost" style="font-size:11px;padding:3px 8px" onclick="navigate('alumnos');setTimeout(()=>{selAlumnoId='${c.id}';renderAlumnoList();renderAlumnoDetail('${c.id}');openPagoAlumnoModal('${c.id}');},100)">Editar</button>`}
+          </td>
         </tr>`).join('')}</tbody></table>
       </div>
       <div class="section">
@@ -2085,7 +2190,7 @@ function renderFinanzas(){
         <table class="fin-table"><thead><tr><th>Profesor</th><th class="right">A pagar</th><th class="right">Estado</th><th></th></tr></thead>
         <tbody>${pd.map(p=>`<tr>
           <td><div class="cell-with-avatar"><div class="mini-avatar" style="background:${p.color}">${ini(p.nombre)}</div><span style="font-weight:500">${p.nombre}</span></div></td>
-          <td class="td-right">${fmt(p.mensual)}</td>
+          <td class="td-right">${fmt(p.mensual)}${p.esEstimado?'<div style="font-size:9px;color:var(--warning)">estimado</div>':'<div style="font-size:9px;color:var(--accent)">'+p.totalClases+' clases reales</div>'}</td>
           <td class="td-right"><span class="badge ${p.estado==='registrado'?'registrado':'pendiente'}">${p.estado==='registrado'?'Registrado':'Pendiente'}</span></td>
           <td class="td-right">${p.estado!=='registrado'?`<button class="btn-ghost" style="font-size:11px;padding:3px 8px" onclick="openPagoProfeModal('${p.id}')">Pagar</button>`:`<span style="font-size:11px;color:var(--text3)">${fmtF(p.fecha)}</span>`}</td>
         </tr>`).join('')}</tbody></table>
@@ -2118,12 +2223,25 @@ function renderFinanzas(){
 // ════════════════════════════════════════════════════════════
 let segOffset = 0;
 // Sistema arranca desde hoy — semana 1
-// Monday of current week
-const _today=new Date();
-const _dow=_today.getDay();
-const SISTEMA_START=new Date(_today);
-SISTEMA_START.setDate(_today.getDate()-(_dow===0?6:_dow-1));
-SISTEMA_START.setHours(0,0,0,0);
+// Sistema start: first attendance recorded, or current week if none
+function getSistemaStart(){
+  if(localAsistencias.length===0){
+    const _t=new Date();
+    const _d=_t.getDay();
+    const mon=new Date(_t);
+    mon.setDate(_t.getDate()-(_d===0?6:_d-1));
+    mon.setHours(0,0,0,0);
+    return mon;
+  }
+  const fechas=localAsistencias.map(a=>new Date(a.fecha+'T12:00:00'));
+  const primera=new Date(Math.min(...fechas));
+  // Go to Monday of that week
+  const dow=primera.getDay();
+  primera.setDate(primera.getDate()-(dow===0?6:dow-1));
+  primera.setHours(0,0,0,0);
+  return primera;
+}
+const SISTEMA_START=getSistemaStart();
 const SEMANAS_TRIM = 12;
 
 function getSegWeekDates(offset=0){
@@ -2177,12 +2295,13 @@ function getPropuestasRecup(alumno){
     localClases.filter(c=>(c.inscritoIds||[]).includes(alumno.id)).map(c=>c.tipo)
   )];
   if(tiposAlumno.length===0) return [];
-  // Buscar clases del mismo tipo con cupo disponible donde NO está inscrito
+  // Solo proponer clases futuras con cupo disponible donde NO está inscrito
   return localClases.filter(c=>
     tiposAlumno.includes(c.tipo) &&
     !(c.inscritoIds||[]).includes(alumno.id) &&
     (c.inscritoIds||[]).length < c.cupo &&
-    c.tipo !== 'recuperativo'
+    c.tipo !== 'recuperativo' &&
+    !isDatePast(c.dia_semana, c.hora_idx) // solo clases que no han pasado
   ).slice(0,3);
 }
 
@@ -2380,6 +2499,65 @@ async function deshacerRecuperativo(alumnoId, claseId){
 
 
 
+
+
+// ════════════════════════════════════════════════════════════
+// ATTENDANCE-BASED CALCULATIONS
+// ════════════════════════════════════════════════════════════
+
+// Get current period dates for a profe (current month)
+function getCurrentMonthRange(){
+  const now=new Date();
+  const start=new Date(now.getFullYear(),now.getMonth(),1);
+  const end=new Date(now.getFullYear(),now.getMonth()+1,0);
+  return {
+    start:start.toISOString().split('T')[0],
+    end:end.toISOString().split('T')[0],
+    label:MESES[now.getMonth()]+' '+now.getFullYear()
+  };
+}
+
+// Count classes a profe actually taught (has at least 1 presente) in date range
+function getClasesDictadasProfe(profeId, startDate, endDate){
+  const clasesProfe=localClases.filter(c=>c.profe_id===profeId);
+  let total=0;
+  const detalle=[];
+  clasesProfe.forEach(c=>{
+    // Count days in range where this class occurred and had attendance
+    const asistencias=localAsistencias.filter(a=>
+      a.clase_id===c.id &&
+      a.estado==='presente' &&
+      a.fecha>=startDate &&
+      a.fecha<=endDate
+    );
+    // Group by fecha to count unique class occurrences
+    const fechas=[...new Set(asistencias.map(a=>a.fecha))];
+    if(fechas.length>0){
+      total+=fechas.length;
+      detalle.push({clase:c, fechas, count:fechas.length});
+    }
+  });
+  return {total, detalle};
+}
+
+// Get alumno attendance history
+function getAlumnoAsistencias(alumnoId){
+  return localAsistencias.filter(a=>a.alumno_id===alumnoId).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+}
+
+// Get current period payment status for alumno
+function getCurrentPeriodStatus(alumno){
+  const pagos=getAlumnosPagos(alumno.id);
+  if(!pagos.length) return {estado:'pendiente',pagado:0,periodo:null};
+  const ultimo=pagos[pagos.length-1];
+  const partes=ultimo.trimestre?ultimo.trimestre.split(' / '):[];
+  const finPeriodo=partes[1]?new Date(partes[1]+'T12:00:00'):null;
+  const hoy=new Date();
+  if(finPeriodo&&finPeriodo>=hoy){
+    return {estado:'pagado',pagado:ultimo.monto,periodo:ultimo.trimestre,fin:finPeriodo};
+  }
+  return {estado:'pendiente',pagado:0,periodo:ultimo.trimestre,fin:finPeriodo};
+}
 
 // ════════════════════════════════════════════════════════════
 // SISTEMA DE ALERTAS Y VALIDACIONES
@@ -2792,6 +2970,37 @@ function renderCalPropuestas(){
 function toggleCalPropuestas(){
   calPropuestasOpen=!calPropuestasOpen;
   document.getElementById('cal-propuestas-panel').style.display=calPropuestasOpen?'block':'none';
+}
+
+
+// ── Real classes taught by profe (from asistencias) ─────────
+function getClasesDictadasProfe(profeId, mesOffset=0){
+  // Get date range for given month offset
+  const inicio=new Date(TODAY.getFullYear(),TODAY.getMonth()+mesOffset,1);
+  const fin=new Date(TODAY.getFullYear(),TODAY.getMonth()+mesOffset+1,0);
+  const inicioStr=inicio.toISOString().split('T')[0];
+  const finStr=fin.toISOString().split('T')[0];
+  // Get clases of this profe
+  const clasesProfe=localClases.filter(c=>c.profe_id===profeId);
+  // For each clase, count asistencias 'presente' in date range
+  let totalClases=0;
+  const detalle=[];
+  clasesProfe.forEach(c=>{
+    const asistMes=localAsistencias.filter(a=>
+      a.clase_id===c.id && a.fecha>=inicioStr && a.fecha<=finStr && a.estado==='presente'
+    );
+    if(asistMes.length>0){
+      totalClases++;
+      detalle.push({clase:c, alumnos:asistMes.length});
+    }
+  });
+  return {totalClases, detalle, inicio, fin};
+}
+
+function getPagoRealProfe(profeId, mesOffset=0){
+  const p=localProfes.find(x=>x.id===profeId); if(!p) return 0;
+  const {detalle}=getClasesDictadasProfe(profeId, mesOffset);
+  return detalle.reduce((s,d)=>s+getTarifaProfe(p,d.clase.tipo),0);
 }
 
 // ════════════════════════════════════════════════════════════
