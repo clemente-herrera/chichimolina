@@ -1810,7 +1810,7 @@ function openAlumnoModal(id=null){
 async function guardarAlumno(){
   const nombre=document.getElementById('ma-nombre').value.trim();
   if(!nombre){showToast('Ingresa el nombre');return;}
-  const custom=document.getElementById('ma-custom').checked;
+  const custom=document.getElementById('ma-custom')?.checked||false;
   // Collect extra fields
   const extrasEl=document.getElementById('ma-extras');
   const extras={};
