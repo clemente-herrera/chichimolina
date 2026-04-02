@@ -453,6 +453,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .day-action-btn{font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:none;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--text2);transition:all 0.12s;}
 .day-action-btn:hover{border-color:var(--accent);color:var(--accent);}
 .day-action-btn.danger:hover{border-color:var(--danger);color:var(--danger);}
+
+/* ── PROFE AGENDA ── */
+.agenda-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);}
+.agenda-week-label{font-size:13px;font-weight:500;}
+.agenda-day{border-bottom:1px solid var(--border);}
+.agenda-day:last-child{border-bottom:none;}
+.agenda-day-header{padding:8px 18px;background:var(--bg);font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;}
+.agenda-clase-row{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);}
+.agenda-clase-row:last-child{border-bottom:none;}
+.agenda-clase-tipo{display:flex;align-items:center;gap:8px;}
+.agenda-clase-hora{font-size:11px;color:var(--text3);min-width:42px;}
+.agenda-realizada{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;}
+.agenda-realizada.si{background:var(--accent-light);color:var(--accent);}
+.agenda-realizada.no{background:var(--danger-light);color:var(--danger);}
+.agenda-realizada.pendiente{background:var(--bg2);color:var(--text3);}
 </style>
 </head>
 <body>
@@ -511,6 +526,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
   </nav>
   <div class="header-right">
     <div class="db-status"><div class="db-dot" id="db-dot"></div><span id="db-label">Conectando…</span></div>
+    <button class="btn-ghost" onclick="navigate('ajustes')" style="font-size:18px;padding:4px 8px" title="Ajustes">⚙️</button>
+    <div class="user-pill" id="user-pill" onclick="doLogout()">
+      <div class="user-dot" id="user-dot">?</div>
+      <span id="user-label">—</span>
+    </div>
     <button class="btn-primary" id="header-primary-btn" onclick="headerPrimaryAction()">+ Nueva clase</button>
   </div>
 </header>
@@ -1015,7 +1035,8 @@ const fmt=n=>'$'+Number(n).toLocaleString('es-CL');
 const fmtF=s=>{if(!s)return'—';const d=new Date(s+'T12:00:00');return d.toLocaleDateString('es-CL',{day:'numeric',month:'short',year:'numeric'});};
 const ini=s=>s.split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
 const col=id=>COL_AV[(typeof id==='string'?id.charCodeAt(0):id)%COL_AV.length];
-const getPrecio=a=>a.precio_trimestral??PRECIO_STD;
+const getPrecio=a=>a.precio_por_clase||0;
+const getPeriodoLabel=p=>({mensual:'Mensual',bimensual:'Bimensual',trimestral:'Trimestral'}[p]||p||'Mensual');
 const estadoPago=(a,pagos)=>{
   // Check if there's a pago for current period
   const pagado=(pagos||[]).reduce((s,p)=>s+p.monto,0);
@@ -1031,7 +1052,7 @@ const getTarifaProfe=(p,tipo)=>p['tarifa_'+tipo]??ESTANDAR[tipo]??0;
 const getMensualProfe=p=>p._clases?p._clases.reduce((s,c)=>s+getTarifaProfe(p,c.tipo),0)*4:0;
 
 // ── STATE ────────────────────────────────────────────────────
-let currentPage='calendario', calOffset=0, finPeriod='mensual', finOffset=0;
+let currentPage='calendario', calOffset=0, finPeriod='mensual', finOffset=0, profeAgendaOffset=0;
 // excepciones: {claseId, semanaOffset, diaIdx, horaIdx, profeId, cancelada}
 let excepciones=[];
 let selAlumnoId=null, selProfeId=null, alumnoFilter='todos';
@@ -1693,6 +1714,11 @@ function renderAlumnoDetail(id){
         :`<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin clases inscritas</div>`}</div>
     </div>
     <div class="section">
+      <div class="section-header"><div class="section-title">Historial de asistencia</div>
+        <div class="section-sub" id="ah-${id}">Cargando…</div></div>
+      <div id="asist-hist-${id}" style="padding:14px 18px;font-size:13px;color:var(--text3)">—</div>
+    </div>
+    <div class="section">
       <div class="section-header"><div class="section-title">Recuperativos pendientes</div>
         <span class="badge ${recup>0?'recup':'pagado'}">${recup} pendiente${recup!==1?'s':''}</span></div>
       <div>${recup>0?Array.from({length:recup},(_,i)=>`
@@ -1727,6 +1753,32 @@ function renderAlumnoDetail(id){
         :`<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin pagos registrados</div>`}
       </div>
     </div>`;
+  // Load attendance history async
+  loadAsistenciaHistorial(id);
+}
+
+async function loadAsistenciaHistorial(alumnoId){
+  const asistEl=document.getElementById('asist-hist-'+alumnoId);
+  const subEl=document.getElementById('ah-'+alumnoId);
+  if(!asistEl) return;
+  const asistAlumno=localAsistencias.filter(a=>a.alumno_id===alumnoId);
+  const presentes=asistAlumno.filter(a=>a.estado==='presente').length;
+  const ausentes=asistAlumno.filter(a=>a.estado==='ausente').length;
+  const total=presentes+ausentes;
+  if(subEl) subEl.textContent=total>0?presentes+' presente, '+ausentes+' ausente':'Sin registros aún';
+  if(total===0){
+    asistEl.innerHTML='<span style="color:var(--text3)">Sin asistencias registradas todavía.</span>';
+    return;
+  }
+  // Show last 5 records
+  const ultimas=asistAlumno.slice(-5).reverse();
+  asistEl.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'
+    +ultimas.map(a=>`<div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:13px">${fmtF(a.fecha)}</div>
+      <span class="badge ${a.estado==='presente'?'pagado':'pendiente'}">${a.estado==='presente'?'Presente':'Ausente'}</span>
+    </div>`).join('')
+    +(asistAlumno.length>5?`<div style="font-size:11px;color:var(--text3);margin-top:4px">Y ${asistAlumno.length-5} registro${asistAlumno.length-5!==1?'s':''} más</div>`:'')
+    +'</div>';
 }
 
 function openAlumnoModal(id=null){
@@ -1856,6 +1908,20 @@ async function confirmarPagoAlumno(){
   }catch(e){showToast('Error al registrar pago','error');}
 }
 
+
+async function sacarAlumnoDeClase(alumnoId, claseId){
+  const c=localClases.find(x=>x.id===claseId); if(!c) return;
+  const a=localAlumnos.find(x=>x.id===alumnoId); if(!a) return;
+  c.inscritoIds=(c.inscritoIds||[]).filter(id=>id!==alumnoId);
+  c.recuperativoIds=(c.recuperativoIds||[]).filter(id=>id!==alumnoId);
+  if(USE_SUPABASE){
+    try{await db.from('inscripciones').delete().eq('alumno_id',alumnoId).eq('clase_id',claseId);}catch(e){}
+  }
+  renderAlumnoDetail(alumnoId);
+  renderCalendar();
+  showToast(a.nombre+' retirada de '+TIPO_L[c.tipo]);
+}
+
 // ════════════════════════════════════════════════════════════
 // PROFESORES
 // ════════════════════════════════════════════════════════════
@@ -1875,106 +1941,167 @@ function renderProfeList(){
 }
 
 function renderProfeDetail(id){
+  selProfeId=id;
   const p=localProfes.find(x=>x.id===id);
   const panel=document.getElementById('profe-detail');
   if(!p){panel.innerHTML='';return;}
-  const m=getMensualProfe(p);
   const clasesProfe=localClases.filter(c=>c.profe_id===id);
   const pagosProfe=localPagosP.filter(x=>x.profe_id===id);
-  const porDia=Array.from({length:6},()=>[]);
-  clasesProfe.forEach(c=>{if(c.dia_semana<6)porDia[c.dia_semana].push(c);});
+  const pagoReal=getPagoRealProfe(id,0);
+  const clasesDictadas=getClasesDictadasProfe(id,0);
+  const mesLabel=MESES[TODAY.getMonth()]+' '+TODAY.getFullYear();
+  const montoSugerido=clasesDictadas.totalClases>0?pagoReal:getMensualProfe(p);
 
-  panel.innerHTML=`
-    <div class="ficha-header">
-      <div class="ficha-avatar" style="background:${p.color||'#2D6A4F'}">${ini(p.nombre+' '+p.apellido)}</div>
-      <div><div class="ficha-name">${p.nombre} ${p.apellido}</div><div class="ficha-sub">${p.email||'—'} · ${p.telefono||'—'}</div></div>
-      <div class="ficha-actions">
-        <button class="btn-ghost" onclick="openProfeModal('${p.id}')">Editar</button>
-        <button class="btn-primary" onclick="openPagoProfeModal('${p.id}')">Registrar pago</button>
-      </div>
+  panel.innerHTML='';
+
+  // Header
+  const header=document.createElement('div'); header.className='ficha-header';
+  header.innerHTML=`<div class="ficha-avatar" style="background:${p.color||'#2D6A4F'}">${ini(p.nombre+' '+p.apellido)}</div>
+    <div><div class="ficha-name">${p.nombre} ${p.apellido}</div>
+      <div class="ficha-sub">${p.email||'—'} · ${p.telefono||'—'}</div>
+      ${p.direccion?`<div class="ficha-sub" style="margin-top:2px">📍 ${p.direccion}</div>`:''}
+      ${p.fecha_nacimiento?`<div class="ficha-sub" style="margin-top:2px">🎂 ${fmtCumple(p.fecha_nacimiento)}</div>`:''}
+      ${p.cuenta_bancaria?`<div class="ficha-sub" style="margin-top:2px">🏦 ${p.cuenta_bancaria}</div>`:''}
+      ${p.notas?`<div class="ficha-sub" style="color:var(--warning);margin-top:3px">📝 ${p.notas}</div>`:''}
     </div>
-    ${(()=>{
-      const pagoReal=getPagoRealProfe(id,0);
-      const clasesDictadas=getClasesDictadasProfe(id,0);
-      const mesLabel=MESES[TODAY.getMonth()];
-      return `<div class="cards-grid">
-        <div class="info-card"><div class="info-card-label">Clases/semana (horario)</div>
-          <div class="info-card-val ok">${clasesProfe.length}</div>
-          <div class="info-card-sub">${[...new Set(clasesProfe.map(c=>TIPO_L[c.tipo]))].join(', ')||'—'}</div></div>
-        <div class="info-card"><div class="info-card-label">Clases dictadas ${mesLabel}</div>
-          <div class="info-card-val ${clasesDictadas.totalClases>0?'ok':'warn'}">${clasesDictadas.totalClases}</div>
-          <div class="info-card-sub">${clasesDictadas.totalClases>0?fmt(pagoReal)+' según asistencia':'Sin asistencias registradas este mes'}</div></div>
-        <div class="info-card"><div class="info-card-label">Total pagado historial</div>
-          <div class="info-card-val ok">${fmt(pagosProfe.reduce((s,x)=>s+x.monto,0))}</div>
-          <div class="info-card-sub">${pagosProfe.length} pago${pagosProfe.length!==1?'s':''} registrados</div></div>
-      </div>`;
-    })()}
-    ${(()=>{
-      const pagoReal=getPagoRealProfe(id,0);
-      const clasesDictadas=getClasesDictadasProfe(id,0);
-      const mesLabel=MESES[TODAY.getMonth()]+' '+TODAY.getFullYear();
-      const montoSugerido=clasesDictadas.totalClases>0?pagoReal:m;
-      return `<div class="resumen-card">
-        <div>
-          <div style="font-size:13px;color:var(--text2)">A pagar — ${mesLabel}</div>
-          <div class="resumen-monto">${fmt(montoSugerido)}</div>
-          <div style="font-size:11px;color:var(--text3)">${clasesDictadas.totalClases>0
-            ?clasesDictadas.totalClases+' clases dictadas según asistencia'
-            :'Estimado: '+clasesProfe.length+' clases/sem × 4 semanas'}</div>
-          ${clasesDictadas.totalClases===0?`<div style="font-size:11px;color:var(--warning);margin-top:4px">⚠ Sin asistencias registradas — usando estimado</div>`:''}
-        </div>
-        <button class="btn-primary" onclick="openPagoProfeModal('${p.id}')">Registrar pago</button>
-      </div>`;
-    })()}
-    <div class="section">
-      <div class="section-header"><div class="section-title">Horario semanal</div></div>
-      <div class="horario-grid">${DIAS_S.map((d,di)=>`
-        <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text3);text-align:center;margin-bottom:3px">${d}</div>
-        ${porDia[di].length?porDia[di].map(c=>`<div class="horario-chip ${c.tipo}">${TIPO_L[c.tipo]}<br><span style="font-weight:400;opacity:.75">${HORAS[c.hora_idx]}</span></div>`).join('')
-          :`<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px 0">—</div>`}</div>`).join('')}
-      </div>
-    </div>
-    <div class="section">
-      <div class="section-header"><div class="section-title">Tarifas por clase</div><span style="font-size:11px;color:var(--text3)">Clic Editar para personalizar</span></div>
-      <div>${['reformer','mat','chair','barrel','recuperativo'].map(tipo=>{
-        const std=ESTANDAR[tipo]||0;const val=p['tarifa_'+tipo]??std;const esCustom=val!==std;
-        return `<div class="tarifa-row">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:9px;height:9px;border-radius:2px;background:${TIPO_DOT[tipo]};flex-shrink:0"></div>
-            <div style="font-size:13px;font-weight:500">${TIPO_L[tipo]}</div>
-            ${esCustom?'<span class="custom-tag">Personalizado</span>':''}
-          </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="font-size:15px;font-weight:500">${fmt(val)}</div>
-            <button class="edit-btn-sm" onclick="openTarifaModal('${p.id}','${tipo}')">Editar</button>
-          </div></div>`}).join('')}
-      </div>
-    </div>
-    <div class="section">
-      <div class="section-header"><div class="section-title">Historial de asistencia</div>
-        <div class="section-sub" id="asist-summary-${a.id}"></div></div>
-      <div>${(()=>{
-        const asists=getAlumnoAsistencias(a.id).slice(0,10);
-        if(!asists.length) return '<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin asistencias registradas aún</div>';
-        return asists.map(x=>{
-          const c=localClases.find(cl=>cl.id===x.clase_id);
-          return '<div class="pago-row">'
-            +'<div><div style="font-size:13px;font-weight:500">'+(c?TIPO_L[c.tipo]:'Clase')+'</div>'
-            +'<div style="font-size:11px;color:var(--text3)">'+x.fecha+'</div></div>'
-            +'<span class="badge '+(x.estado==='presente'?'pagado':'pendiente')+'">'+(x.estado==='presente'?'Presente':'Ausente')+'</span>'
-            +'</div>';
-        }).join('');
-      })()}</div>
-    </div>
-    <div class="section">
-      <div class="section-header"><div class="section-title">Historial de pagos</div></div>
-      <div>${pagosProfe.length?pagosProfe.map(pg=>`
-        <div class="pago-row"><div><div style="font-size:13px;font-weight:500">${pg.mes}</div>
-          <div style="font-size:11px;color:var(--text3)">${fmtF(pg.fecha_pago)}</div></div>
-          <div style="font-size:14px;font-weight:500;color:var(--accent)">${fmt(pg.monto)}</div></div>`).join('')
-        :`<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin pagos registrados</div>`}
-      </div>
+    <div class="ficha-actions">
+      <button class="btn-ghost" onclick="openProfeModal('${p.id}')">Editar</button>
+      <button class="btn-primary" onclick="openPagoProfeModal('${p.id}')">Registrar pago</button>
     </div>`;
+  panel.appendChild(header);
+
+  // Stats
+  const stats=document.createElement('div'); stats.className='cards-grid';
+  stats.innerHTML=`
+    <div class="info-card"><div class="info-card-label">Clases/semana</div>
+      <div class="info-card-val ok">${clasesProfe.length}</div>
+      <div class="info-card-sub">${[...new Set(clasesProfe.map(c=>TIPO_L[c.tipo]))].join(', ')||'—'}</div></div>
+    <div class="info-card"><div class="info-card-label">Clases dictadas ${MESES[TODAY.getMonth()]}</div>
+      <div class="info-card-val ${clasesDictadas.totalClases>0?'ok':'warn'}">${clasesDictadas.totalClases}</div>
+      <div class="info-card-sub">${clasesDictadas.totalClases>0?fmt(pagoReal)+' según asistencia':'Estimado: '+fmt(getMensualProfe(p))}</div></div>
+    <div class="info-card"><div class="info-card-label">Total pagado</div>
+      <div class="info-card-val ok">${fmt(pagosProfe.reduce((s,x)=>s+x.monto,0))}</div>
+      <div class="info-card-sub">${pagosProfe.length} pago${pagosProfe.length!==1?'s':''} registrados</div></div>`;
+  panel.appendChild(stats);
+
+  // Resumen pago
+  const resumen=document.createElement('div'); resumen.className='resumen-card';
+  resumen.innerHTML=`<div>
+    <div style="font-size:13px;color:var(--text2)">A pagar — ${mesLabel}</div>
+    <div class="resumen-monto">${fmt(montoSugerido)}</div>
+    <div style="font-size:11px;color:var(--text3)">${clasesDictadas.totalClases>0
+      ?clasesDictadas.totalClases+' clases dictadas según asistencia'
+      :'Estimado: '+clasesProfe.length+' clases/sem × 4 semanas'}</div>
+    </div>
+    <button class="btn-primary" onclick="openPagoProfeModal('${p.id}')">Registrar pago</button>`;
+  panel.appendChild(resumen);
+
+  // Agenda semanal navegable
+  const agendaSec=document.createElement('div'); agendaSec.className='section';
+  agendaSec.id='profe-agenda-section';
+  panel.appendChild(agendaSec);
+  renderProfeAgenda(id);
+
+  // Tarifas
+  const tarifaSec=document.createElement('div'); tarifaSec.className='section';
+  tarifaSec.innerHTML=`<div class="section-header"><div class="section-title">Tarifas por clase</div>
+    <span style="font-size:11px;color:var(--text3)">Clic Editar para personalizar</span></div>
+    <div>${['reformer','mat','chair','barrel','recuperativo'].map(tipo=>{
+      const std=ESTANDAR[tipo]||0; const val=p['tarifa_'+tipo]??std; const esCustom=val!==std;
+      return `<div class="tarifa-row">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:9px;height:9px;border-radius:2px;background:${TIPO_DOT[tipo]};flex-shrink:0"></div>
+          <div style="font-size:13px;font-weight:500">${TIPO_L[tipo]}</div>
+          ${esCustom?'<span class="custom-tag">Personalizado</span>':''}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:15px;font-weight:500">${fmt(val)}</div>
+          <button class="edit-btn-sm" onclick="openTarifaModal('${p.id}','${tipo}')">Editar</button>
+        </div></div>`;}).join('')}</div>`;
+  panel.appendChild(tarifaSec);
+
+  // Historial pagos
+  const pagoSec=document.createElement('div'); pagoSec.className='section';
+  pagoSec.innerHTML=`<div class="section-header"><div class="section-title">Historial de pagos</div></div>
+    <div>${pagosProfe.length?pagosProfe.map(pg=>`
+      <div class="pago-row"><div><div style="font-size:13px;font-weight:500">${pg.mes}</div>
+        <div style="font-size:11px;color:var(--text3)">${fmtF(pg.fecha_pago)}</div></div>
+        <div style="font-size:14px;font-weight:500;color:var(--accent)">${fmt(pg.monto)}</div></div>`).join('')
+      :`<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin pagos registrados</div>`}
+    </div>`;
+  panel.appendChild(pagoSec);
+}
+
+function renderProfeAgenda(profeId){
+  const sec=document.getElementById('profe-agenda-section');
+  if(!sec) return;
+  const dates=getWeekDates(profeAgendaOffset);
+  const lunes=dates[0], sabado=dates[5];
+  const weekLabel=weekTitle(dates);
+  const clasesProfe=localClases.filter(c=>c.profe_id===profeId);
+
+  // Build agenda nav
+  sec.innerHTML=`<div class="section-header">
+    <div class="section-title">Agenda semanal</div>
+  </div>
+  <div class="agenda-nav">
+    <button class="arrow-btn" onclick="changeProfeAgenda(-1,'${profeId}')">‹</button>
+    <div class="agenda-week-label">${weekLabel}</div>
+    <button class="arrow-btn" onclick="changeProfeAgenda(1,'${profeId}')">›</button>
+  </div>`;
+
+  // Group classes by day
+  let hasClasses=false;
+  dates.forEach((date,di)=>{
+    const clasesDelDia=clasesProfe.filter(c=>c.dia_semana===di);
+    if(!clasesDelDia.length) return;
+    hasClasses=true;
+    const dayDiv=document.createElement('div'); dayDiv.className='agenda-day';
+    const dayHeader=document.createElement('div'); dayHeader.className='agenda-day-header';
+    dayHeader.textContent=DIAS_F[di]+' '+date.getDate()+' de '+MESES[date.getMonth()];
+    dayDiv.appendChild(dayHeader);
+
+    clasesDelDia.forEach(c=>{
+      const dateStr=date.toISOString().split('T')[0];
+      const asistAlumnos=localAsistencias.filter(a=>a.clase_id===c.id&&a.fecha===dateStr);
+      const presentes=asistAlumnos.filter(a=>a.estado==='presente').length;
+      const inscritos=(c.inscritoIds||[]).length;
+      const yaOcurrio=new Date(date)<new Date();
+      const tieneAsist=asistAlumnos.length>0;
+
+      let estadoLabel, estadoClass;
+      if(!yaOcurrio){estadoLabel='Pendiente';estadoClass='pendiente';}
+      else if(tieneAsist){estadoLabel='Realizada ('+presentes+'/'+inscritos+')';estadoClass='si';}
+      else{estadoLabel='Sin registro';estadoClass='pendiente';}
+
+      const row=document.createElement('div'); row.className='agenda-clase-row';
+      row.innerHTML=`<div class="agenda-clase-tipo">
+        <div style="width:9px;height:9px;border-radius:2px;background:${TIPO_DOT[c.tipo]};flex-shrink:0"></div>
+        <div>
+          <div style="font-size:13px;font-weight:500">${TIPO_L[c.tipo]}</div>
+          <div style="font-size:11px;color:var(--text3)">${inscritos} alumno${inscritos!==1?'s':''} inscritos</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="agenda-clase-hora">${HORAS[c.hora_idx]}</div>
+        <span class="agenda-realizada ${estadoClass}">${estadoLabel}</span>
+      </div>`;
+      dayDiv.appendChild(row);
+    });
+    sec.appendChild(dayDiv);
+  });
+
+  if(!hasClasses){
+    const empty=document.createElement('div');
+    empty.style.cssText='padding:20px 18px;font-size:13px;color:var(--text3);text-align:center';
+    empty.textContent='Sin clases esta semana';
+    sec.appendChild(empty);
+  }
+}
+
+function changeProfeAgenda(dir, profeId){
+  profeAgendaOffset+=dir;
+  renderProfeAgenda(profeId);
 }
 
 function openProfeModal(id=null){
@@ -2340,6 +2467,9 @@ function renderSeguimiento(){
 
   // KPIs
   scroll.innerHTML=`
+    ${localAsistencias.length===0?`<div style="background:var(--blue-light);border:1px solid var(--blue);border-radius:var(--radius);padding:14px 18px;margin-bottom:4px;font-size:13px;color:var(--blue)">
+      ℹ️ <b>El seguimiento arranca cuando empieces a pasar lista.</b> Ve al Calendario, abre una clase y marca la asistencia de cada alumno — aquí verás el progreso automáticamente.
+    </div>`:''}
     <div class="seg-kpi-row">
       <div class="info-card"><div class="info-card-label">Semana del trimestre</div>
         <div class="info-card-val ok">${semanaNum}<span style="font-size:14px;font-weight:400;color:var(--text3)"> / ${SEMANAS_TRIM}</span></div>
@@ -2364,7 +2494,7 @@ function renderSeguimiento(){
         <thead><tr>
           <th>Alumno</th>
           <th class="center">Esta semana</th>
-          <th>Progreso trimestral</th>
+          <th>Progreso desde inicio</th>
           <th class="center">Hechas / Esperadas</th>
           <th class="center">Recuperativos</th>
           <th class="center">Estado</th>
@@ -2391,14 +2521,16 @@ function renderSeguimiento(){
             </div>
           </td>
           <td class="center" style="font-size:13px">
-            <b>${d.hechasTotal}</b><span style="color:var(--text3)"> / ${d.esperadasAFecha}</span>
-            ${d.delta<0?`<div style="font-size:10px;color:var(--danger);font-weight:600">${d.delta} clase${d.delta!==-1?'s':''}</div>`:'<div style="font-size:10px;color:var(--accent)">al día</div>'}
+            ${d.esperadasAFecha===0
+              ?'<span style="font-size:11px;color:var(--text3)">Sin datos</span>'
+              :`<b>${d.hechasTotal}</b><span style="color:var(--text3)"> / ${d.esperadasAFecha}</span>
+              ${d.delta<0?`<div style="font-size:10px;color:var(--danger);font-weight:600">${d.delta} clase${d.delta!==-1?'s':''}</div>`:'<div style="font-size:10px;color:var(--accent)">al día</div>'}`}
           </td>
           <td class="center">
             ${d.recup>0?`<span class="badge recup">↩ ${d.recup}</span>`:`<span style="font-size:12px;color:var(--text3)">—</span>`}
           </td>
           <td class="center">
-            <span class="estado-chip ${d.estado}">${d.delta>=0?'Al día':(d.delta===-1?'−1 clase':d.delta+' clases')}</span>
+            <span class="estado-chip ${d.esperadasAFecha===0?'al-dia':d.estado}">${d.esperadasAFecha===0?'Sin datos':d.delta>=0?'Al día':(d.delta===-1?'−1 clase':d.delta+' clases')}</span>
           </td>
         </tr>`).join('')}
         </tbody>
