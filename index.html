@@ -156,7 +156,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .time-cell{padding:0;vertical-align:top;text-align:center;font-size:10px;color:var(--text3);font-weight:500;padding-top:7px;width:54px;background:var(--card);border-right:1px solid var(--border);}
 .day-cell{padding:3px;vertical-align:top;background:var(--bg);min-height:68px;}
 .day-cell.today-col{background:#F0F8F4;}
-.slot-inner{display:flex;gap:3px;min-height:62px;align-items:stretch;}
+.slot-inner{display:flex;gap:3px;min-height:28px;align-items:stretch;}
 .slot-inner.empty{cursor:pointer;border-radius:var(--radius-sm);transition:background 0.12s;}
 .slot-inner.empty:hover{background:rgba(45,106,79,0.07);}
 .class-card{flex:1;min-width:0;border-radius:var(--radius-sm);padding:5px 7px;cursor:pointer;transition:all 0.15s;border-left:3px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,0.08);display:flex;flex-direction:column;gap:1px;}
@@ -468,6 +468,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .agenda-realizada.si{background:var(--accent-light);color:var(--accent);}
 .agenda-realizada.no{background:var(--danger-light);color:var(--danger);}
 .agenda-realizada.pendiente{background:var(--bg2);color:var(--text3);}
+
+/* ── CLASS DURATION VISUAL ── */
+.class-card{min-height:52px;position:relative;}
+.class-card::after{content:'1h';position:absolute;bottom:3px;right:5px;font-size:8px;color:rgba(0,0,0,0.25);font-weight:500;}
+.time-cell{font-size:10px!important;height:28px;vertical-align:top;padding-top:4px!important;}
+.day-cell{height:28px;}
 </style>
 </head>
 <body>
@@ -1740,6 +1746,9 @@ function openClaseModal(claseId){
   const c=localClases.find(x=>x.id===claseId);if(!c)return;
   if(!validarAsistenciaFutura(claseId)) return;
   activeClaseId=claseId;
+  // Calculate real fecha based on calendar week offset
+  const dates=getWeekDates(calOffset);
+  activeClaseFecha=dates[c.dia_semana]?dates[c.dia_semana].toISOString().split('T')[0]:new Date().toISOString().split('T')[0];
   const p=localProfes.find(x=>x.id===c.profe_id);
   const inscritos=localAlumnos.filter(a=>(c.inscritoIds||[]).includes(a.id));
   document.getElementById('mc-title').textContent=TIPO_L[c.tipo];
@@ -1780,7 +1789,8 @@ async function setAsist(claseId,alumnoId,estado,btn){
   btn.classList.add(estado);
   if(USE_SUPABASE){
     try{
-      await db.from('asistencias').upsert({alumno_id:alumnoId,clase_id:claseId,fecha:'2026-03-27',estado},{onConflict:'alumno_id,clase_id,fecha'});
+      const fechaAsist=activeClaseFecha||new Date().toISOString().split('T')[0];
+      await db.from('asistencias').upsert({alumno_id:alumnoId,clase_id:claseId,fecha:fechaAsist,estado},{onConflict:'alumno_id,clase_id,fecha'});
     }catch(e){console.warn('Asistencia no guardada en DB:',e);}
   }
   if(estado==='ausente'){
