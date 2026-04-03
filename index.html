@@ -2027,7 +2027,7 @@ function recalcularCobro(){
 
 function recalcularCobroForAlumno(a, fechaInicio){
   if(!fechaInicio) return;
-  const {clases,monto,meses,periodo}=calcularMontoCobro(a, fechaInicio);
+  const {clases,monto,meses,periodo,feriadosDescontados,clasesTotalesSinFeriados}=calcularMontoCobro(a, fechaInicio);
   const finDate=new Date(fechaInicio);
   finDate.setMonth(finDate.getMonth()+meses);
   const finStr=finDate.toLocaleDateString('es-CL',{day:'numeric',month:'short',year:'numeric'});
