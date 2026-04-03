@@ -1452,6 +1452,7 @@ function renderCalendar(){
       const td=document.createElement('td');td.className='day-cell'+(isToday(dates[di])?' today-col':'');
       const inner=document.createElement('div');
       // Apply weekly exceptions
+      const slotHora=HORAS_GRID[hi];
       const sc=localClases.filter(c=>{
         const exc=excepciones.find(e=>e.claseId===c.id&&e.semanaOffset===calOffset);
         if(exc){
@@ -1462,7 +1463,7 @@ function renderCalendar(){
       }).filter(c=>{
         // Also hide if this class has an exception moving it elsewhere this week
         const exc=excepciones.find(e=>e.claseId===c.id&&e.semanaOffset===calOffset);
-        if(exc&&!exc.cancelada&&(exc.diaIdx!==di||exc.horaIdx!==hi)) return false;
+        if(exc&&!exc.cancelada&&(exc.diaIdx!==di||(exc.hora||getHoraClase(c))!==slotHora)) return false;
         return true;
       });
       // Check if this slot is in the past today
