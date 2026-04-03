@@ -634,7 +634,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
         <div class="search-box"><span style="color:var(--text3);font-size:13px">⌕</span>
           <input type="text" id="alumno-search" placeholder="Buscar alumno…" oninput="renderAlumnoList()"></div>
         <div class="filter-row">
-          <button class="filter-chip active" onclick="setAlumnoFilter('todos',this)">Todos</button>
+          <button class="filter-chip active" id="filter-activo" onclick="setAlumnoFilter('activo',this)">Activos</button>
+          <button class="filter-chip" id="filter-pausado" onclick="setAlumnoFilter('pausado',this)">Pausados</button>
+          <button class="filter-chip" id="filter-inactivo" onclick="setAlumnoFilter('inactivo',this)">Inactivos</button>
+          <button class="filter-chip" id="filter-todos" onclick="setAlumnoFilter('todos',this)">Todos</button>
           <button class="filter-chip" onclick="setAlumnoFilter('pendiente',this)">Pendiente pago</button>
           <button class="filter-chip" onclick="setAlumnoFilter('recuperativo',this)">Con recuperativos</button>
         </div>
@@ -716,7 +719,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 
     <!-- NOTIFICACIONES -->
     <div class="section" >
-      <div class="section-header"><div class="section-title">📬 Notificaciones automáticas</div></div>
+      <div class="section-header"><div class="section-title" id="sec-notif">📬 Notificaciones automáticas</div></div>
       <div style="padding:16px 18px;display:flex!important;flex-direction:column;gap:14px;visibility:visible">
         <div>
           <label class="field-label">API Key de Resend</label>
@@ -754,24 +757,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 
     <!-- TIPOS DE CLASE -->
     <div class="section" >
-      <div class="section-header"><div class="section-title">🏋️ Tipos de clase</div>
+      <div class="section-header"><div class="section-title" id="sec-tipos">🏋️ Tipos de clase</div>
         <button class="btn-secondary" style="font-size:12px" onclick="agregarTipoClase()">+ Nuevo tipo</button></div>
       <div id="tipos-clase-list" style="padding:12px 18px;display:flex;flex-direction:column;gap:8px"></div>
     </div>
 
     <!-- HORARIOS DISPONIBLES -->
-    <div class="section" >
-      <div class="section-header"><div class="section-title">🕐 Horarios disponibles</div>
-        <button class="btn-secondary" style="font-size:12px" onclick="agregarHorario()">+ Horario</button></div>
-      <div style="padding:12px 18px">
-        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Bloques de hora que aparecen en el calendario</div>
-        <div id="horarios-list" style="display:flex;gap:8px;flex-wrap:wrap"></div>
-      </div>
-    </div>
+
 
     <!-- PRECIOS Y TARIFAS -->
     <div class="section" >
-      <div class="section-header"><div class="section-title">💰 Precios y tarifas</div></div>
+      <div class="section-header"><div class="section-title" id="sec-precios">💰 Precios y tarifas</div></div>
       <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px">
         <div style="display:flex;align-items:center;gap:12px">
           <div style="flex:1">
@@ -801,7 +797,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 
     <!-- FERIADOS -->
     <div class="section" >
-      <div class="section-header"><div class="section-title">📅 Feriados Chile</div>
+      <div class="section-header"><div class="section-title" id="sec-feriados">📅 Feriados Chile</div>
         <button class="btn-secondary" style="font-size:12px" onclick="agregarFeriado()">+ Agregar</button></div>
       <div style="padding:12px 18px">
         <div id="feriados-list" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto"></div>
@@ -810,7 +806,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 
     <!-- BACKUP -->
     <div class="section" >
-      <div class="section-header"><div class="section-title">💾 Backup y exportación</div></div>
+      <div class="section-header"><div class="section-title" id="sec-backup">💾 Backup y exportación</div></div>
       <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px">
         <div style="font-size:13px;color:var(--text2)">Exporta todos tus datos en formato Excel para tener un respaldo local.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -824,7 +820,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 
     <!-- HISTORIAL DE CAMBIOS -->
     <div class="section" >
-      <div class="section-header"><div class="section-title">📋 Historial de cambios</div></div>
+      <div class="section-header"><div class="section-title" id="sec-historial">📋 Historial de cambios</div></div>
       <div id="historial-list" style="padding:12px 18px;max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
         <div style="font-size:13px;color:var(--text3)">Los cambios importantes se registran automáticamente aquí.</div>
       </div>
@@ -832,7 +828,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 
     <!-- INVITAR ADMINISTRADOR -->
     <div class="section" >
-      <div class="section-header"><div class="section-title">👤 Administradores</div></div>
+      <div class="section-header"><div class="section-title" id="sec-admin">👤 Administradores</div></div>
       <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px">
         <div style="font-size:13px;color:var(--text2)">Invita a otra persona para que tenga acceso completo a la app.</div>
         <div style="display:flex;gap:8px">
@@ -865,7 +861,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
     <div class="modal-header"><div><div class="modal-title">Nueva clase</div><div class="modal-sub" id="m-nc-sub"></div></div><button class="close-btn" onclick="closeModal('m-nueva-clase')">×</button></div>
     <div class="modal-body">
       <div class="field-group"><label class="field-label">Día</label><select class="field-select" id="nc-dia"><option value="0">Lunes</option><option value="1">Martes</option><option value="2">Miércoles</option><option value="3">Jueves</option><option value="4">Viernes</option><option value="5">Sábado</option></select></div>
-      <div class="field-group"><label class="field-label">Horario</label><select class="field-select" id="nc-hora"></select></div>
+      <div class="field-group"><label class="field-label">Hora</label>
+        <div style="display:flex;gap:6px">
+          <select class="field-select" id="nc-hora-sel" style="flex:1" onchange="syncHoraInput(this.value)"></select>
+          <input class="field-input" id="nc-hora" placeholder="HH:MM" style="width:90px" oninput="syncHoraSel(this.value)">
+        </div>
+        <div class="field-hint">Elige de la lista o escribe hora exacta (ej: 13:15)</div>
+      </div>
+      
       <div class="field-group"><label class="field-label">Tipo</label><select class="field-select" id="nc-tipo"><option value="reformer">Reformer</option><option value="mat">Mat</option><option value="chair">Chair</option><option value="barrel">Barrel</option><option value="recuperativo">Recuperativo</option></select></div>
       <div class="field-group"><label class="field-label">Profesora</label><select class="field-select" id="nc-profe"></select></div>
       <div class="field-group"><label class="field-label">Cupo</label><select class="field-select" id="nc-cupo"><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6</option></select></div>
@@ -1186,7 +1189,7 @@ async function saveExcepcion(exc){
       clase_id:exc.claseId,
       semana_inicio:semanaInicio,
       dia_idx:exc.diaIdx,
-      hora_idx:exc.horaIdx,
+      hora_inicio:exc.hora||'08:00',
       profe_id:exc.profeId||null,
       cancelada:exc.cancelada
     },{onConflict:'clase_id,semana_inicio'});
@@ -1205,7 +1208,7 @@ async function loadExcepciones(){
       const diffMs=semLunes-hoy;
       const semanaOffset=Math.round(diffMs/(7*24*3600*1000));
       return {claseId:e.clase_id, semanaOffset, diaIdx:e.dia_idx,
-        horaIdx:e.hora_idx, profeId:e.profe_id, cancelada:e.cancelada};
+        hora:e.hora_inicio||HORAS_GRID[e.hora_idx]||'08:00', profeId:e.profe_id, cancelada:e.cancelada};
     });
   }catch(e){console.warn('Error loading excepciones:',e);}
 }
@@ -1344,21 +1347,21 @@ function loadFallbackData(){
     {id:'a8',nombre:'Catalina',apellido:'Pérez',email:'cata@email.com',telefono:'+56 9 2890 1234',recuperativos_pendientes:0,notas:'',precio_por_clase:8000,periodo_pago:"mensual"},
   ];
   localClases=[
-    {id:'c1',tipo:'reformer',dia_semana:0,hora_idx:1,profe_id:'p1',cupo:4,inscritoIds:['a1','a2','a3','a4'],recuperativoIds:['a3'],asistencia:{}},
-    {id:'c2',tipo:'mat',dia_semana:0,hora_idx:1,profe_id:'p2',cupo:6,inscritoIds:['a5','a6','a7'],recuperativoIds:[],asistencia:{}},
-    {id:'c3',tipo:'mat',dia_semana:0,hora_idx:3,profe_id:'p2',cupo:6,inscritoIds:['a5','a6','a7'],recuperativoIds:[],asistencia:{}},
-    {id:'c4',tipo:'reformer',dia_semana:1,hora_idx:0,profe_id:'p1',cupo:4,inscritoIds:['a1','a4','a8'],recuperativoIds:[],asistencia:{}},
-    {id:'c5',tipo:'chair',dia_semana:1,hora_idx:0,profe_id:'p3',cupo:3,inscritoIds:['a2','a5','a6'],recuperativoIds:[],asistencia:{}},
-    {id:'c6',tipo:'barrel',dia_semana:1,hora_idx:0,profe_id:'p3',cupo:2,inscritoIds:['a3','a7'],recuperativoIds:[],asistencia:{}},
-    {id:'c7',tipo:'reformer',dia_semana:2,hora_idx:1,profe_id:'p2',cupo:4,inscritoIds:['a3','a7','a8'],recuperativoIds:['a3'],asistencia:{}},
-    {id:'c8',tipo:'mat',dia_semana:2,hora_idx:4,profe_id:'p1',cupo:6,inscritoIds:['a1','a2','a4','a5','a6'],recuperativoIds:[],asistencia:{}},
-    {id:'c9',tipo:'barrel',dia_semana:3,hora_idx:3,profe_id:'p3',cupo:4,inscritoIds:['a3','a7'],recuperativoIds:[],asistencia:{}},
-    {id:'c10',tipo:'reformer',dia_semana:3,hora_idx:7,profe_id:'p1',cupo:4,inscritoIds:['a1','a2','a3','a4'],recuperativoIds:[],asistencia:{}},
-    {id:'c11',tipo:'recuperativo',dia_semana:4,hora_idx:2,profe_id:'p2',cupo:3,inscritoIds:['a3','a5'],recuperativoIds:['a3','a5'],asistencia:{}},
-    {id:'c12',tipo:'mat',dia_semana:4,hora_idx:5,profe_id:'p2',cupo:6,inscritoIds:['a6','a7','a8'],recuperativoIds:[],asistencia:{}},
-    {id:'c13',tipo:'reformer',dia_semana:5,hora_idx:1,profe_id:'p1',cupo:4,inscritoIds:['a1','a4','a6','a8'],recuperativoIds:[],asistencia:{}},
-    {id:'c14',tipo:'chair',dia_semana:5,hora_idx:1,profe_id:'p3',cupo:3,inscritoIds:['a2','a5'],recuperativoIds:[],asistencia:{}},
-    {id:'c15',tipo:'mat',dia_semana:5,hora_idx:1,profe_id:'p2',cupo:5,inscritoIds:['a3','a7'],recuperativoIds:[],asistencia:{}},
+    {id:'c1',tipo:'reformer',dia_semana:0,hora:'08:00',profe_id:'p1',cupo:4,inscritoIds:['a1','a2','a3','a4'],recuperativoIds:['a3'],asistencia:{}},
+    {id:'c2',tipo:'mat',dia_semana:0,hora:'08:00',profe_id:'p2',cupo:6,inscritoIds:['a5','a6','a7'],recuperativoIds:[],asistencia:{}},
+    {id:'c3',tipo:'mat',dia_semana:0,hora:'10:00',profe_id:'p2',cupo:6,inscritoIds:['a5','a6','a7'],recuperativoIds:[],asistencia:{}},
+    {id:'c4',tipo:'reformer',dia_semana:1,hora:'07:00',profe_id:'p1',cupo:4,inscritoIds:['a1','a4','a8'],recuperativoIds:[],asistencia:{}},
+    {id:'c5',tipo:'chair',dia_semana:1,hora:'07:00',profe_id:'p3',cupo:3,inscritoIds:['a2','a5','a6'],recuperativoIds:[],asistencia:{}},
+    {id:'c6',tipo:'barrel',dia_semana:1,hora:'07:00',profe_id:'p3',cupo:2,inscritoIds:['a3','a7'],recuperativoIds:[],asistencia:{}},
+    {id:'c7',tipo:'reformer',dia_semana:2,hora:'08:00',profe_id:'p2',cupo:4,inscritoIds:['a3','a7','a8'],recuperativoIds:['a3'],asistencia:{}},
+    {id:'c8',tipo:'mat',dia_semana:2,hora:'11:00',profe_id:'p1',cupo:6,inscritoIds:['a1','a2','a4','a5','a6'],recuperativoIds:[],asistencia:{}},
+    {id:'c9',tipo:'barrel',dia_semana:3,hora:'10:00',profe_id:'p3',cupo:4,inscritoIds:['a3','a7'],recuperativoIds:[],asistencia:{}},
+    {id:'c10',tipo:'reformer',dia_semana:3,hora:'14:00',profe_id:'p1',cupo:4,inscritoIds:['a1','a2','a3','a4'],recuperativoIds:[],asistencia:{}},
+    {id:'c11',tipo:'recuperativo',dia_semana:4,hora:'09:00',profe_id:'p2',cupo:3,inscritoIds:['a3','a5'],recuperativoIds:['a3','a5'],asistencia:{}},
+    {id:'c12',tipo:'mat',dia_semana:4,hora:'12:00',profe_id:'p2',cupo:6,inscritoIds:['a6','a7','a8'],recuperativoIds:[],asistencia:{}},
+    {id:'c13',tipo:'reformer',dia_semana:5,hora:'08:00',profe_id:'p1',cupo:4,inscritoIds:['a1','a4','a6','a8'],recuperativoIds:[],asistencia:{}},
+    {id:'c14',tipo:'chair',dia_semana:5,hora:'08:00',profe_id:'p3',cupo:3,inscritoIds:['a2','a5'],recuperativoIds:[],asistencia:{}},
+    {id:'c15',tipo:'mat',dia_semana:5,hora:'08:00',profe_id:'p2',cupo:5,inscritoIds:['a3','a7'],recuperativoIds:[],asistencia:{}},
   ];
   localPagosA=[
     {id:'pa1',alumno_id:'a1',trimestre:'Q1-2026',monto:180000,fecha_pago:'2026-01-05',metodo:'Transferencia'},
@@ -1442,7 +1445,7 @@ function renderCalendar(){
   });
   thead.appendChild(hr);table.appendChild(thead);
   const tbody=document.createElement('tbody');
-  HORAS.forEach((hora,hi)=>{
+  HORAS_GRID.forEach((hora,hi)=>{
     const tr=document.createElement('tr');
     const tdT=document.createElement('td');tdT.className='time-cell';tdT.textContent=hora;tr.appendChild(tdT);
     for(let di=0;di<6;di++){
@@ -1453,9 +1456,9 @@ function renderCalendar(){
         const exc=excepciones.find(e=>e.claseId===c.id&&e.semanaOffset===calOffset);
         if(exc){
           if(exc.cancelada) return false; // cancelled this week
-          return exc.diaIdx===di&&exc.horaIdx===hi;
+          return exc.diaIdx===di&&(exc.hora||getHoraClase(c))===slotHora;
         }
-        return c.dia_semana===di&&c.hora_idx===hi;
+        return c.dia_semana===di&&getHoraClase(c)===slotHora;
       }).filter(c=>{
         // Also hide if this class has an exception moving it elsewhere this week
         const exc=excepciones.find(e=>e.claseId===c.id&&e.semanaOffset===calOffset);
@@ -1579,7 +1582,7 @@ function cancelarEstaSemanaNow(){
   if(!claseSemanaNowId) return;
   const c=localClases.find(x=>x.id===claseSemanaNowId); if(!c) return;
   const existing=excepciones.findIndex(e=>e.claseId===claseSemanaNowId&&e.semanaOffset===calOffset);
-  const exc={claseId:claseSemanaNowId, semanaOffset:calOffset, diaIdx:c.dia_semana, horaIdx:c.hora_idx, profeId:c.profe_id, cancelada:true};
+  const exc={claseId:claseSemanaNowId, semanaOffset:calOffset, diaIdx:c.dia_semana, hora:getHoraClase(c), profeId:c.profe_id, cancelada:true};
   if(existing>=0) excepciones[existing]=exc; else excepciones.push(exc);
   saveExcepcion(exc);
   renderCalendar();
@@ -1600,7 +1603,7 @@ function confirmarCambioProfe(){
   const c=localClases.find(x=>x.id===claseSemanaNowId); if(!c) return;
   const newProfeId=document.getElementById('cambio-profe-select').value;
   const existing=excepciones.findIndex(e=>e.claseId===claseSemanaNowId&&e.semanaOffset===calOffset);
-  const exc={claseId:claseSemanaNowId, semanaOffset:calOffset, diaIdx:c.dia_semana, horaIdx:c.hora_idx, profeId:newProfeId, cancelada:false};
+  const exc={claseId:claseSemanaNowId, semanaOffset:calOffset, diaIdx:c.dia_semana, hora:getHoraClase(c), profeId:newProfeId, cancelada:false};
   if(existing>=0) excepciones[existing]=exc; else excepciones.push(exc);
   saveExcepcion(exc);
   const p=localProfes.find(x=>x.id===newProfeId);
@@ -1626,9 +1629,9 @@ function addDropZone(inner,di,hi){
     const id=dragClaseId||e.dataTransfer.getData('text/plain');
     if(!id) return;
     const c=localClases.find(x=>x.id===id);
-    if(!c||(c.dia_semana===di&&c.hora_idx===hi)) return;
+    if(!c||(c.dia_semana===di&&getHoraClase(c)===HORAS_GRID[hi])) return;
     // Store pending move and ask scope
-    pendingMove={claseId:id, newDi:di, newHi:hi, oldDi:c.dia_semana, oldHi:c.hora_idx};
+    pendingMove={claseId:id, newDi:di, newHora:HORAS_GRID[hi], oldDi:c.dia_semana, oldHora:getHoraClase(c)};
     document.getElementById('scope-title').textContent=`Mover ${TIPO_L[c.tipo]}`;
     document.getElementById('scope-sub').textContent=
       `${DIAS_F[c.dia_semana]} ${getHoraClase(c)} → ${DIAS_F[di]} ${HORAS_GRID[hi]}`;
@@ -1639,29 +1642,29 @@ function addDropZone(inner,di,hi){
 async function confirmScopeWeek(){
   closeModal('m-scope');
   if(!pendingMove) return;
-  const {claseId, newDi, newHi} = pendingMove;
+  const {claseId, newDi, newHora} = pendingMove;
   const c=localClases.find(x=>x.id===claseId);
   if(!c) return;
   // Save as exception for this week
   const existing=excepciones.findIndex(e=>e.claseId===claseId&&e.semanaOffset===calOffset);
-  const exc={claseId, semanaOffset:calOffset, diaIdx:newDi, horaIdx:newHi, profeId:c.profe_id, cancelada:false};
+  const exc={claseId, semanaOffset:calOffset, diaIdx:newDi, hora:newHora||getHoraClase(c), profeId:c.profe_id, cancelada:false};
   if(existing>=0) excepciones[existing]=exc; else excepciones.push(exc);
   saveExcepcion(exc);
   renderCalendar();
-  showToast(`${TIPO_L[c.tipo]} movido solo esta semana`);
+  showToast(TIPO_L[c.tipo]+' movido solo esta semana');
   pendingMove=null;
 }
 
 async function confirmScopeAlways(){
   closeModal('m-scope');
   if(!pendingMove) return;
-  const {claseId, newDi, newHi} = pendingMove;
+  const {claseId, newDi, newHora} = pendingMove;
   const c=localClases.find(x=>x.id===claseId);
   if(!c) return;
-  c.dia_semana=newDi; c.hora_idx=newHi;
+  c.dia_semana=newDi; c.hora=newHora;
   renderCalendar();
   showToast(`${TIPO_L[c.tipo]} movido en el horario base`);
-  try{ await dbUpdate('clases',claseId,{dia_semana:newDi,hora_idx:newHi}); }
+  try{ await dbUpdate('clases',claseId,{dia_semana:newDi,hora:newHora}); }
   catch(err){ showToast('Error al guardar','error'); }
   pendingMove=null;
 }
@@ -1814,7 +1817,7 @@ async function deleteClase(){
 // ════════════════════════════════════════════════════════════
 // ALUMNOS
 // ════════════════════════════════════════════════════════════
-function setAlumnoFilter(f,btn){alumnoFilter=f;document.querySelectorAll('#page-alumnos .filter-chip').forEach(c=>c.classList.remove('active'));btn.classList.add('active');renderAlumnoList();}
+function setAlumnoFilter(f,btn){alumnoFilter=f;document.querySelectorAll('#page-alumnos .filter-chip').forEach(c=>c.classList.remove('active'));if(btn)btn.classList.add('active');renderAlumnoList();}
 function getAlumnosPagos(id){return localPagosA.filter(p=>p.alumno_id===id);}
 
 function renderAlumnoList(){
@@ -1824,6 +1827,9 @@ function renderAlumnoList(){
     if(!match)return false;
     if(alumnoFilter==='pendiente'){const ep=estadoPago(a,getAlumnosPagos(a.id));return ep!=='pagado';}
     if(alumnoFilter==='recuperativo')return(a.recuperativos_pendientes||0)>0;
+    if(alumnoFilter==='activo') return (a.estado||'activo')==='activo';
+    if(alumnoFilter==='pausado') return a.estado==='pausado';
+    if(alumnoFilter==='inactivo') return a.estado==='inactivo';
     return true;
   });
   document.getElementById('alumno-count').textContent=filtered.length+' alumno'+(filtered.length!==1?'s':'');
@@ -2255,7 +2261,9 @@ function openNuevaClaseModalConCallback(alumnoId){
   // Open nueva clase modal, then after saving reopen inscribir
   document.getElementById('m-nc-sub').textContent='Nueva clase';
   document.getElementById('nc-dia').value=0;
-  document.getElementById('nc-hora').innerHTML=HORAS.map((h,i)=>`<option value="${i}">${h}</option>`).join('');
+  const selCb=document.getElementById('nc-hora-sel');
+  if(selCb){selCb.innerHTML='<option value="">-- Seleccionar --</option>'+HORAS_GRID.map(h=>`<option value="${h}">${h}</option>`).join('');selCb.value='08:00';}
+  if(document.getElementById('nc-hora')) document.getElementById('nc-hora').value='08:00';
   document.getElementById('nc-profe').innerHTML=localProfes.map(p=>`<option value="${p.id}">${p.nombre} ${p.apellido}</option>`).join('');
   document.getElementById('nc-tipo').value='reformer';
   document.getElementById('nc-cupo').value=4;
@@ -3365,7 +3373,7 @@ function addAlumnoDrop(inner, di, hi){
   inner.addEventListener('drop',async e=>{
     if(!draggingAlumnoId) return;
     inner.classList.remove('alumno-drag-over');
-    const targetClases=localClases.filter(c=>c.dia_semana===di&&c.hora_idx===hi);
+    const targetClases=localClases.filter(c=>c.dia_semana===di&&getHoraClase(c)===HORAS_GRID[hi]);
     if(targetClases.length===0){showToast('No hay clase en este horario','error');return;}
     // If multiple classes, pick first with space
     const targetClase=targetClases.find(c=>!(c.inscritoIds||[]).includes(draggingAlumnoId)&&(c.inscritoIds||[]).length<c.cupo);
@@ -3707,7 +3715,7 @@ function renderInscribirSearch(){
   if(lleno){
     const alts=localClases.filter(x=>x.id!==c.id&&x.tipo===c.tipo&&(x.inscritoIds||[]).length<x.cupo);
     el.innerHTML='<div style="font-size:12px;color:var(--danger);padding:8px 10px;background:var(--danger-light);border-radius:var(--radius-sm)">Clase llena ('+c.cupo+'/'+c.cupo+'). Saca un alumno o aumenta el cupo.'
-      +(alts.length?'<br><b style="display:block;margin-top:4px">Clases similares con cupo: </b>'+alts.map(x=>DIAS_F[x.dia_semana]+' '+HORAS[x.hora_idx]+' ('+( x.inscritoIds||[]).length+'/'+x.cupo+')').join(', '):'')+'</div>';
+      +(alts.length?'<br><b style="display:block;margin-top:4px">Clases similares con cupo: </b>'+alts.map(x=>DIAS_F[x.dia_semana]+' '+getHoraClase(x)+' ('+( x.inscritoIds||[]).length+'/'+x.cupo+')').join(', '):'')+'</div>';
     return;
   }
   const disponibles=localAlumnos.filter(a=>
@@ -3881,13 +3889,21 @@ function esFeriado(dateStr){ return FERIADOS_CHILE[dateStr]||null; }
 // CÁLCULO DE COBRO POR PERIODO
 // ════════════════════════════════════════════════════════════
 function contarClasesEnPeriodo(alumnoId, fechaInicio, meses){
+  const alumno=localAlumnos.find(x=>x.id===alumnoId);
   const clasesAlumno=localClases.filter(c=>(c.inscritoIds||[]).includes(alumnoId));
   if(!clasesAlumno.length) return {total:0, dias:[], feriadosDescontados:[]};
+  // Respect fecha_termino — don't count beyond it
+  let finEfectivo=new Date(fechaInicio);
+  finEfectivo.setMonth(finEfectivo.getMonth()+meses);
+  if(alumno&&alumno.fecha_termino){
+    const ft=new Date(alumno.fecha_termino+'T12:00:00');
+    if(ft<finEfectivo) finEfectivo=ft;
+  }
+  meses=null; // use finEfectivo directly
   let total=0;
   const diasClase=[];
   const feriadosDescontados=[];
-  const fin=new Date(fechaInicio);
-  fin.setMonth(fin.getMonth()+meses);
+  const fin=finEfectivo||new Date(fechaInicio);
   const cur=new Date(fechaInicio);
   while(cur<fin){
     const dow=cur.getDay();
@@ -4175,7 +4191,7 @@ function agregarHorario(){
 
 function eliminarHorario(idx){
   const hora=HORAS[idx];
-  const tieneClases=localClases.some(c=>c.hora_idx===idx);
+  const tieneClases=localClases.some(c=>getHoraClase(c)===HORAS_GRID[idx]);
   if(tieneClases){showToast('No se puede eliminar — hay clases a las '+hora,'error');return;}
   HORAS.splice(idx,1);
   saveAppConfig();
