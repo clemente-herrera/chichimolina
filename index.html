@@ -701,7 +701,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 
 <!-- AJUSTES -->
 <div class="page" id="page-ajustes">
-  <div class="fin-scroll" style="max-width:680px;margin:0 auto;padding:28px 24px;gap:0;display:flex;flex-direction:column">
+  <div class="fin-scroll" style="max-width:680px;margin:0 auto;padding:28px 24px;gap:16px;display:flex;flex-direction:column">
     <div style="font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:20px">Panel de control</div>
 
     <!-- NOTIFICACIONES -->
@@ -1675,6 +1675,20 @@ async function confirmarNuevaClase(){
     localClases.push(res);
     localProfes.forEach(p=>{p._clases=localClases.filter(c=>c.profe_id===p.id);});
     closeModal('m-nueva-clase');renderCalendar();showToast('Clase creada');
+    // If opened from alumno inscribir flow, inscribe the alumno and reopen
+    if(window._pendingInscribirAlumno){
+      const pid=window._pendingInscribirAlumno;
+      window._pendingInscribirAlumno=null;
+      // Auto-inscribe if no conflict
+      const conflicto=hasHorarioConflict(pid, res.id);
+      if(!conflicto){
+        res.inscritoIds=[pid];
+        try{await dbInsert('inscripciones',{alumno_id:pid,clase_id:res.id,es_recuperativo:false});}catch(e){}
+        renderCalendar();
+        showToast('Clase creada y alumno inscrito');
+      }
+      setTimeout(()=>openInscribirAlumnoEnCalendario(pid),300);
+    }
   }catch(e){showToast('Error al crear clase','error');}
 }
 
@@ -1809,6 +1823,7 @@ function renderAlumnoDetail(id){
       </div>
       <div class="ficha-actions">
         <button class="btn-ghost" onclick="openAlumnoModal('${a.id}')">Editar</button>
+        <button class="btn-ghost" onclick="navigate('calendario');setTimeout(()=>openInscribirAlumnoEnCalendario('${a.id}'),300)">📅 Clases</button>
         <button class="btn-primary" onclick="openPagoAlumnoModal('${a.id}')">Registrar pago</button>
       </div>
     </div>
@@ -1822,9 +1837,17 @@ function renderAlumnoDetail(id){
         +'<div class="info-card"><div class="info-card-label">Estado de pago</div>'
         +'<div class="info-card-val '+(ep2==='pagado'?'ok':'danger')+'">'+(ep2==='pagado'?'Al día':'Pendiente')+'</div>'
         +'<div class="info-card-sub">'+(ep2==='pagado'&&periodoStatus.fin?'Hasta '+periodoStatus.fin.toLocaleDateString('es-CL',{day:'numeric',month:'short'}):'Sin período activo')+'</div></div>'
-        +'<div class="info-card"><div class="info-card-label">Precio por clase</div>'
-        +'<div class="info-card-val">'+fmt(a.precio_por_clase||0)+'</div>'
-        +'<div class="info-card-sub">'+getPeriodoLabel(a.periodo_pago||'mensual')+' · '+clasesHoy.total+' clases este período</div></div>'
+        +(()=>{
+          const meses={mensual:1,bimensual:2,trimestral:3}[a.periodo_pago||'mensual']||1;
+          const montoEstimado=clasesHoy.total*(a.precio_por_clase||0);
+          const feriadosDesc=clasesHoy.feriadosDescontados||[];
+          return '<div class="info-card" style="cursor:pointer" onclick="openPagoAlumnoModal(\''+a.id+'\')">'
+            +'<div class="info-card-label">Cobro este período</div>'
+            +'<div class="info-card-val '+(montoEstimado>0?'ok':'warn')+'">'+fmt(montoEstimado)+'</div>'
+            +'<div class="info-card-sub">'+clasesHoy.total+' clases · '+getPeriodoLabel(a.periodo_pago||'mensual')
+            +(feriadosDesc.length>0?' (−'+feriadosDesc.length+' feriado'+(feriadosDesc.length!==1?'s':'')+')':'')
+            +'</div></div>';
+        })()
         +'<div class="info-card"><div class="info-card-label">Asistencia total</div>'
         +'<div class="info-card-val ok">'+asistTotal+'</div>'
         +'<div class="info-card-sub">'+faltasTotal+' falta'+(faltasTotal!==1?'s':'')+' registradas</div></div>'
@@ -2081,6 +2104,19 @@ function openInscribirAlumnoEnCalendario(alumnoId){
 
   title.textContent='Clases para '+a.nombre;
   sub.textContent='Selecciona las clases de su horario semanal';
+  // Add "Nueva clase" button to modal footer
+  const footer=modal.querySelector('.modal-footer');
+  if(footer&&!footer.querySelector('#btn-nueva-clase-modal')){
+    const btnNueva=document.createElement('button');
+    btnNueva.id='btn-nueva-clase-modal';
+    btnNueva.className='btn-secondary';
+    btnNueva.textContent='+ Nueva clase';
+    btnNueva.onclick=()=>{
+      closeModal('m-inscribir');
+      openNuevaClaseModalConCallback(alumnoId);
+    };
+    footer.insertBefore(btnNueva, footer.firstChild);
+  }
 
   // Show all classes not yet assigned to this alumno
   const inscritos=document.getElementById('mi-inscritos');
@@ -2145,6 +2181,20 @@ async function inscribirAlumnoDirecto(alumnoId, claseId, btn){
   btn.closest('.alumno-sel-row').style.background='var(--accent-light)';
   renderCalendar();
   showToast(a.nombre+' agregada a '+TIPO_L[c.tipo]+' del '+DIAS_F[c.dia_semana]);
+}
+
+
+function openNuevaClaseModalConCallback(alumnoId){
+  // Open nueva clase modal, then after saving reopen inscribir
+  document.getElementById('m-nc-sub').textContent='Nueva clase';
+  document.getElementById('nc-dia').value=0;
+  document.getElementById('nc-hora').innerHTML=HORAS.map((h,i)=>`<option value="${i}">${h}</option>`).join('');
+  document.getElementById('nc-profe').innerHTML=localProfes.map(p=>`<option value="${p.id}">${p.nombre} ${p.apellido}</option>`).join('');
+  document.getElementById('nc-tipo').value='reformer';
+  document.getElementById('nc-cupo').value=4;
+  // Override confirmar to also inscribe the alumno
+  window._pendingInscribirAlumno=alumnoId;
+  openModal('m-nueva-clase');
 }
 
 // ════════════════════════════════════════════════════════════
