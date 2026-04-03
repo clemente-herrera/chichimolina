@@ -3754,14 +3754,7 @@ async function doLogout(){
 // guardarPrecioStd and guardarTarifasStd replaced by guardarPrecios()
 
 
-function renderAjustes(){
-  // Render tarifas inputs dynamically
-  const tipos=['reformer','mat','chair','barrel','recuperativo'];
-  tipos.forEach(t=>{
-    const el=document.getElementById('std-'+t);
-    if(el) el.value=ESTANDAR[t];
-  });
-}
+// renderAjustes defined below in Panel de Control section
 
 
 
@@ -3876,6 +3869,9 @@ function saveAppConfig(){ localStorage.setItem('app_config', JSON.stringify(appC
 
 // ── Render ajustes ────────────────────────────────────────────
 function renderAjustes(){
+  setTimeout(()=>_renderAjustesInternal(), 50);
+}
+function _renderAjustesInternal(){
   // Resend
   if(appConfig.resendKey){
     const el=document.getElementById('resend-key');
