@@ -945,6 +945,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
         <button onclick="closeModal('m-clase-semana');openInscribirModal(claseSemanaNowId)" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;cursor:pointer;font-family:DM Sans,sans-serif;font-size:13px;color:var(--text)">
           <span>👥</span> Gestionar alumnos
         </button>
+        <button onclick="closeModal('m-clase-semana');openEditarClaseModal(claseSemanaNowId)" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;cursor:pointer;font-family:DM Sans,sans-serif;font-size:13px;color:var(--text)">
+          <span>✏️</span> Editar clase
+        </button>
       </div>
     </div>
   </div>
@@ -1960,10 +1963,21 @@ function renderAlumnoDetail(id){
         const asistencias=localAsistencias.filter(a=>a.alumno_id===id&&a.clase_id===c.id);
         const presentes=asistencias.filter(a=>a.estado==='presente').length;
         const ausentes=asistencias.filter(a=>a.estado==='ausente').length;
+        // Calculate next occurrence
+        const today=new Date(); today.setHours(0,0,0,0);
+        const dow=today.getDay()===0?6:today.getDay()-1; // 0=Mon
+        let daysAhead=c.dia_semana-dow;
+        if(daysAhead<0||(daysAhead===0&&horaToMin(getHoraClase(c))<today.getHours()*60+today.getMinutes())) daysAhead+=7;
+        const nextDate=new Date(today); nextDate.setDate(today.getDate()+daysAhead);
+        const nextStr=nextDate.toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'});
         return `<div class="clase-row"><div class="clase-dot" style="background:${TIPO_DOT[c.tipo]}"></div>
-          <div style="flex:1"><div style="font-size:13px;font-weight:500">${TIPO_L[c.tipo]}</div>
-          <div style="font-size:11px;color:var(--text3)">${DIAS_F[c.dia_semana]} ${getHoraClase(c)} · ${profe?profe.nombre:'—'}</div>
-          ${asistencias.length>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">${presentes} presente${presentes!==1?'s':''} · ${ausentes} ausencia${ausentes!==1?'s':''}</div>`:''}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500">${TIPO_L[c.tipo]}</div>
+            <div style="font-size:11px;color:var(--text2)">${nextStr} · ${getHoraClase(c)}</div>
+            <div style="font-size:11px;color:var(--text3)">👩‍🏫 ${profe?profe.nombre:'—'}</div>
+            ${asistencias.length>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">${presentes} presente${presentes!==1?'s':''} · ${ausentes} ausencia${ausentes!==1?'s':''}</div>`:''}
+          </div>
+          <button class="btn-ghost" style="font-size:11px;padding:2px 6px" onclick="sacarAlumnoDeClase('${id}','${c.id}')">Sacar</button>
           </div>`;}).join('')
         :`<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin clases inscritas</div>`}</div>
     </div>
@@ -2663,7 +2677,7 @@ function renderFinanzas(){
   const periodoInicio=new Date(TODAY.getFullYear(),TODAY.getMonth()+finOffset,1);
   const periodoInicioStr=periodoInicio.toISOString().split('T')[0];
 
-  const cobros=localAlumnos.map(a=>{
+  const cobros=localAlumnos.filter(a=>(a.estado||'activo')!=='inactivo').map(a=>{
     // Only pagos for current period
     const todosPagos=getAlumnosPagos(a.id);
     const pagosDelPeriodo=todosPagos.filter(p=>{
@@ -3704,6 +3718,51 @@ function renderDayView(){
     }
     col.appendChild(block);
   });
+}
+
+
+// Editar clase
+let editandoClaseId=null;
+
+function syncMecHoraSel(val){
+  const el=document.getElementById('mec-hora-sel'); if(!el) return;
+  if(HORAS_GRID.includes(val)) el.value=val; else el.value='';
+}
+
+function openEditarClaseModal(claseId){
+  editandoClaseId=claseId;
+  const c=localClases.find(x=>x.id===claseId); if(!c) return;
+  document.getElementById('mec-sub').textContent=TIPO_L[c.tipo]+' . '+DIAS_F[c.dia_semana]+' . '+getHoraClase(c);
+  document.getElementById('mec-tipo').value=c.tipo;
+  const sel=document.getElementById('mec-hora-sel');
+  sel.innerHTML='<option value="">-- Seleccionar --</option>'+HORAS_GRID.map(h=>'<option value="'+h+'">'+h+'</option>').join('');
+  sel.value=getHoraClase(c);
+  document.getElementById('mec-hora').value=getHoraClase(c);
+  document.getElementById('mec-profe').innerHTML=localProfes.map(p=>'<option value="'+p.id+'">'+p.nombre+' '+p.apellido+'</option>').join('');
+  document.getElementById('mec-profe').value=c.profe_id||'';
+  document.getElementById('mec-cupo').value=c.cupo||4;
+  openModal('m-editar-clase');
+}
+
+async function confirmarEditarClase(){
+  const c=localClases.find(x=>x.id===editandoClaseId); if(!c) return;
+  const hora=document.getElementById('mec-hora').value.trim()||'08:00';
+  const profeId=document.getElementById('mec-profe').value;
+  const profeConflicto=localClases.find(x=>
+    x.id!==editandoClaseId&&x.dia_semana===c.dia_semana&&
+    horasConflict(getHoraClase(x),hora)&&x.profe_id===profeId);
+  if(profeConflicto){
+    const pf=localProfes.find(x=>x.id===profeId);
+    showToast((pf?pf.nombre:'La profesora')+' ya tiene '+TIPO_L[profeConflicto.tipo]+' a esa hora','error');
+    return;
+  }
+  const updates={tipo:document.getElementById('mec-tipo').value, hora, profe_id:profeId,
+    cupo:parseInt(document.getElementById('mec-cupo').value)||4};
+  Object.assign(c, updates);
+  try{ await dbUpdate('clases',editandoClaseId,updates); }catch(e){}
+  closeModal('m-editar-clase');
+  renderCalendar();
+  showToast('Clase actualizada');
 }
 
 // ════════════════════════════════════════════════════════════
