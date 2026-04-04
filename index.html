@@ -156,7 +156,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .time-cell{padding:0;vertical-align:top;text-align:center;font-size:10px;color:var(--text3);font-weight:500;padding-top:7px;width:54px;background:var(--card);border-right:1px solid var(--border);}
 .day-cell{padding:3px;vertical-align:top;background:var(--bg);min-height:68px;}
 .day-cell.today-col{background:#F0F8F4;}
-.slot-inner{display:flex;gap:3px;min-height:28px;align-items:stretch;}
+.slot-inner{display:flex;gap:3px;min-height:56px;align-items:stretch;height:100%;}
 .slot-inner.empty{cursor:pointer;border-radius:var(--radius-sm);transition:background 0.12s;}
 .slot-inner.empty:hover{background:rgba(45,106,79,0.07);}
 .class-card{flex:1;min-width:0;border-radius:var(--radius-sm);padding:5px 7px;cursor:pointer;transition:all 0.15s;border-left:3px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,0.08);display:flex;flex-direction:column;gap:1px;}
@@ -472,8 +472,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 /* ── CLASS DURATION VISUAL ── */
 .class-card{min-height:52px;position:relative;}
 .class-card::after{content:'1h';position:absolute;bottom:3px;right:5px;font-size:8px;color:rgba(0,0,0,0.25);font-weight:500;}
-.time-cell{font-size:10px!important;height:28px;vertical-align:top;padding-top:4px!important;}
-.day-cell{height:28px;}
+.time-cell{font-size:10px;height:28px;vertical-align:top;padding-top:5px;color:var(--text3);width:52px;white-space:nowrap;}
+.day-cell{height:28px;vertical-align:top;padding:0;}
 </style>
 </head>
 <body>
@@ -1435,80 +1435,114 @@ function renderCalendar(){
   renderCalInasistencias();
   renderCobroPendienteBanner();
   if(calOffset===0) setTimeout(scrollToCurrentHour,100);
-  const table=document.getElementById('cal-table'); table.innerHTML='';
-  const thead=document.createElement('thead'); const hr=document.createElement('tr');
-  const thT=document.createElement('th');thT.className='th-time';hr.appendChild(thT);
-  dates.forEach((d,i)=>{
-    const th=document.createElement('th');if(isToday(d))th.className='today-head';
-    const clasesDelDia=localClases.filter(c=>c.dia_semana===i).length;
-    const dayIdx=i;
-    th.innerHTML=`<div class="day-header-wrap" onclick="jumpToDayView(${dayIdx})">
-      <div class="day-name-th">${DIAS_S[i]}</div>
+
+  const table=document.getElementById('cal-table');
+  table.innerHTML='';
+
+  // THEAD
+  const thead=document.createElement('thead');
+  const trHead=document.createElement('tr');
+  const thEmpty=document.createElement('th');thEmpty.className='time-col';trHead.appendChild(thEmpty);
+  dates.forEach((d,di)=>{
+    const th=document.createElement('th');th.className='day-head'+(isToday(d)?' today-head':'');
+    const clasesDelDia=localClases.filter(c=>c.dia_semana===di).length;
+    th.innerHTML=`<div class="day-header-wrap" onclick="jumpToDayView(${di})">
+      <div class="day-name-th">${DIAS_S[di]}</div>
       <div class="day-num-th">${d.getDate()}</div>
       ${clasesDelDia>0?`<div class="day-clase-count">${clasesDelDia} clase${clasesDelDia!==1?'s':''}</div>`:''}
     </div>`;
-    hr.appendChild(th);
+    trHead.appendChild(th);
   });
-  thead.appendChild(hr);table.appendChild(thead);
+  thead.appendChild(trHead);
+  table.appendChild(thead);
+
+  // TBODY — track spanned cells
   const tbody=document.createElement('tbody');
+  // spanned[di] = number of rows still spanned for that column
+  const spanned=Array(6).fill(0);
+
   HORAS_GRID.forEach((hora,hi)=>{
     const tr=document.createElement('tr');
-    const tdT=document.createElement('td');tdT.className='time-cell';tdT.textContent=hora;tr.appendChild(tdT);
+    const tdT=document.createElement('td');
+    tdT.className='time-cell';
+    tdT.textContent=hora.endsWith(':00')?hora:'';  // only show :00 labels
+    tr.appendChild(tdT);
+
     for(let di=0;di<6;di++){
-      const td=document.createElement('td');td.className='day-cell'+(isToday(dates[di])?' today-col':'');
-      const inner=document.createElement('div');
-      // Apply weekly exceptions
+      // Skip if this cell is already covered by a rowspan
+      if(spanned[di]>0){ spanned[di]--; continue; }
+
       const slotHora=HORAS_GRID[hi];
       const sc=localClases.filter(c=>{
         const exc=excepciones.find(e=>e.claseId===c.id&&e.semanaOffset===calOffset);
         if(exc){
-          if(exc.cancelada) return false; // cancelled this week
+          if(exc.cancelada) return false;
           return exc.diaIdx===di&&(exc.hora||getHoraClase(c))===slotHora;
         }
         return c.dia_semana===di&&getHoraClase(c)===slotHora;
       }).filter(c=>{
-        // Also hide if this class has an exception moving it elsewhere this week
         const exc=excepciones.find(e=>e.claseId===c.id&&e.semanaOffset===calOffset);
         if(exc&&!exc.cancelada&&(exc.diaIdx!==di||(exc.hora||getHoraClase(c))!==slotHora)) return false;
         return true;
-      });
-      // Check if this slot is in the past today
+      }).map(c=>({...c,inscritoIds:(c.inscritoIds||[]).filter(aid=>{
+        const a=localAlumnos.find(x=>x.id===aid);
+        return !a||(a.estado||'activo')!=='inactivo';
+      })}));
+
       const isCurrentDay=isToday(dates[di]);
       const nowHour=new Date().getHours();
-      const slotHour=parseInt(HORAS_GRID[hi].split(':')[0]);
-      const isPastSlot=isCurrentDay&&slotHour<nowHour&&calOffset===0;
-      const isCurrentSlot=isCurrentDay&&slotHour===nowHour&&calOffset===0;
+      const nowMin=new Date().getMinutes();
+      const slotH=parseInt(hora.split(':')[0]);
+      const slotM=parseInt(hora.split(':')[1]||0);
+      const slotMinTotal=slotH*60+slotM;
+      const nowMinTotal=nowHour*60+nowMin;
+      const isPastSlot=isCurrentDay&&slotMinTotal<nowMinTotal&&calOffset===0;
+      const isCurrentSlot=isCurrentDay&&Math.abs(slotMinTotal-nowMinTotal)<30&&calOffset===0;
 
+      const td=document.createElement('td');
+      td.className='day-cell'+(isToday(dates[di])?' today-col':'');
+
+      // Classes that start at this slot get rowspan=2 (1 hour = 2×30min rows)
+      if(sc.length>0){
+        td.rowSpan=2;
+        spanned[di]=1; // skip next row for this column
+        td.style.verticalAlign='top';
+      }
+
+      const inner=document.createElement('div');
       inner.className='slot-inner'+(sc.length===0?' empty':'');
-      if(sc.length===0){inner.onclick=()=>openNuevaClaseModal(di,hi);}
-      else{
+
+      if(sc.length===0){
+        inner.onclick=()=>openNuevaClaseModal(di,hi);
+      } else {
         sc.forEach(c=>inner.appendChild(buildClassCard(c)));
         const btn=document.createElement('button');btn.className='add-slot-btn';btn.textContent='+';
         btn.onclick=e=>{e.stopPropagation();openNuevaClaseModal(di,hi);};
         inner.appendChild(btn);
       }
-      addDropZone(inner,di,hi);
-      addAlumnoDrop(inner,di,hi);
 
       // Current time indicator
       if(isCurrentSlot&&di===new Date().getDay()-1){
-        const nowMin=new Date().getMinutes();
-        const pct=Math.round((nowMin/60)*100);
+        const nowMinInSlot=nowMinTotal-slotMinTotal;
+        const pct=Math.round((nowMinInSlot/30)*100);
         const line=document.createElement('div');
         line.className='current-time-line';
-        line.style.top=pct+'%';
+        line.style.top=Math.min(pct,100)+'%';
         td.style.position='relative';
         td.appendChild(line);
       }
-      td.appendChild(inner);tr.appendChild(td);
+
+      addDropZone(inner,di,hi);
+      addAlumnoDrop(inner,di,hi);
+      td.appendChild(inner);
+      tr.appendChild(td);
     }
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
+  if(calView==='dia') renderDayView();
 }
 
-// ── DRAG & DROP ─────────────────────────────────────────────
-let dragClaseId=null, ghost=null;
 
 function buildClassCard(c){
   // Check if there's a profe exception this week
