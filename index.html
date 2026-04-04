@@ -474,6 +474,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .class-card::after{content:'1h';position:absolute;bottom:3px;right:5px;font-size:8px;color:rgba(0,0,0,0.25);font-weight:500;}
 .time-cell{font-size:10px;height:28px;vertical-align:top;padding-top:5px;color:var(--text3);width:52px;white-space:nowrap;}
 .day-cell{height:28px;vertical-align:top;padding:0;}
+
+/* ── CLASE PASADA SIN ASISTENCIA ── */
+.class-card.sin-asistencia{border-left-color:var(--warning)!important;}
+.sin-asist-dot{width:7px;height:7px;border-radius:50%;background:var(--warning);display:inline-block;margin-left:4px;flex-shrink:0;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
 </style>
 </head>
 <body>
@@ -1973,25 +1978,10 @@ function renderAlumnoDetail(id){
       <div>${recup>0?Array.from({length:recup},(_,i)=>`
         <div class="pago-row"><div><div style="font-size:13px">↩ Recuperativo #${i+1}</div>
           <div style="font-size:11px;color:var(--text3)">Sin fecha asignada</div></div>
-          <button class="btn-ghost" style="font-size:12px" onclick="showToast('Asignar a clase próximamente')">Asignar</button></div>`).join('')
+          <button class="btn-ghost" style="font-size:12px" onclick="navigate('calendario');setTimeout(()=>openInscribirAlumnoEnCalendario('${a.id}'),300)">Asignar clase</button></div>`).join('')
         :`<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin recuperativos pendientes</div>`}</div>
     </div>
-    <div class="section">
-      <div class="section-header"><div class="section-title">Historial de asistencia</div>
-        <div class="section-sub" id="asist-summary-${a.id}"></div></div>
-      <div>${(()=>{
-        const asists=getAlumnoAsistencias(a.id).slice(0,10);
-        if(!asists.length) return '<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Sin asistencias registradas aún</div>';
-        return asists.map(x=>{
-          const c=localClases.find(cl=>cl.id===x.clase_id);
-          return '<div class="pago-row">'
-            +'<div><div style="font-size:13px;font-weight:500">'+(c?TIPO_L[c.tipo]:'Clase')+'</div>'
-            +'<div style="font-size:11px;color:var(--text3)">'+x.fecha+'</div></div>'
-            +'<span class="badge '+(x.estado==='presente'?'pagado':'pendiente')+'">'+(x.estado==='presente'?'Presente':'Ausente')+'</span>'
-            +'</div>';
-        }).join('');
-      })()}</div>
-    </div>
+
     <div class="section">
       <div class="section-header"><div class="section-title">Historial de pagos</div></div>
       <div>${pagos.length?pagos.map(p=>`
@@ -2286,6 +2276,21 @@ async function inscribirAlumnoDirecto(alumnoId, claseId, btn){
   const a=localAlumnos.find(x=>x.id===alumnoId); if(!a) return;
   const conflicto=hasHorarioConflict(alumnoId,claseId);
   if(conflicto){ showToast(a.nombre+' ya tiene clase a esa hora','error'); return; }
+  // Warn if alumno already has a class same day (different hour)
+  const mismoDia=localClases.find(x=>
+    x.id!==claseId &&
+    x.dia_semana===c.dia_semana &&
+    (x.inscritoIds||[]).includes(alumnoId)
+  );
+  if(mismoDia){
+    const proceed=await new Promise(res=>{
+      showAlert({icon:'📅',title:'Dos clases el mismo día',
+        msg:a.nombre+' ya tiene '+TIPO_L[mismoDia.tipo]+' los '+DIAS_F[c.dia_semana]+' a las '+getHoraClase(mismoDia)+'. ¿Confirmas agregar otra clase ese día?',
+        confirmLabel:'Sí, agregar igual',cancelLabel:'Cancelar',
+        onConfirm:()=>res(true),onCancel:()=>res(false)});
+    });
+    if(!proceed) return;
+  }
   if((c.inscritoIds||[]).length>=c.cupo){ showToast('Clase llena','error'); return; }
   c.inscritoIds=[...(c.inscritoIds||[]),alumnoId];
   try{ await dbInsert('inscripciones',{alumno_id:alumnoId,clase_id:claseId,es_recuperativo:false}); }catch(e){}
