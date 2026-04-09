@@ -1295,7 +1295,7 @@ async function loadAllData(){
   localAlumnos=alumnos||[];
 
   document.getElementById('loading-text').textContent='Cargando horario…';
-  const {data:clases}=await db.from('clases').select('*').order('dia_semana,hora');
+  const {data:clases}=await db.from('clases').select('*').order('dia_semana');
   localClases=clases||[];
 
   const {data:inscr}=await db.from('inscripciones').select('*');
