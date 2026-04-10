@@ -973,6 +973,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
   </div>
 </div>
 
+<div class="modal-overlay" id="m-editar-clase" onclick="if(event.target===this)closeModal('m-editar-clase')">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><div><div class="modal-title">Editar clase</div><div class="modal-sub" id="mec-sub"></div></div><button class="close-btn" onclick="closeModal('m-editar-clase')">x</button></div>
+    <div class="modal-body">
+      <div class="field-group"><label class="field-label">Tipo</label><select class="field-select" id="mec-tipo"><option value="reformer">Reformer</option><option value="mat">Mat</option><option value="chair">Chair</option><option value="barrel">Barrel</option><option value="recuperativo">Recuperativo</option></select></div>
+      <div class="field-group"><label class="field-label">Hora</label><div style="display:flex;gap:6px"><select class="field-select" id="mec-hora-sel" style="flex:1" onchange="document.getElementById('mec-hora').value=this.value"></select><input class="field-input" id="mec-hora" placeholder="HH:MM" style="width:90px" oninput="syncMecHoraSel(this.value)"></div><div class="field-hint">Elige de la lista o escribe hora exacta (ej: 13:15)</div></div>
+      <div class="field-group"><label class="field-label">Profesora</label><select class="field-select" id="mec-profe"></select></div>
+      <div class="field-group"><label class="field-label">Cupo</label><select class="field-select" id="mec-cupo"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="8">8</option></select></div>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="closeModal('m-editar-clase')">Cancelar</button><button class="btn-primary" onclick="confirmarEditarClase()">Guardar cambios</button></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="m-inscribir" onclick="if(event.target===this)closeModal('m-inscribir')">
   <div class="modal" style="max-width:460px">
     <div class="modal-header">
@@ -1069,7 +1082,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
         <input class="field-input" id="mpa-fecha" type="date" value="2026-03-27">
       </div>
       <div class="field-group"><label class="field-label">Método</label>
-        <select class="field-select" id="mpa-metodo"><option>Transferencia</option><option>Efectivo</option><option>Cheque</option></select>
+        <select class="field-select" id="mpa-metodo"><option>Transferencia</option><option>Efectivo</option><option>Cheque</option><option>Débito</option><option>Crédito</option><option>Webpay</option></select>
       </div>
     </div>
     <div class="modal-footer"><button class="btn-secondary" onclick="closeModal('m-pago-alumno')">Cancelar</button><button class="btn-primary" onclick="confirmarPagoAlumno()">Registrar</button></div>
@@ -2035,10 +2048,16 @@ async function loadAsistenciaHistorial(alumnoId){
   // Show last 5 records
   const ultimas=asistAlumno.slice(-5).reverse();
   asistEl.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'
-    +ultimas.map(a=>`<div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:13px">${fmtF(a.fecha)}</div>
-      <span class="badge ${a.estado==='presente'?'pagado':'pendiente'}">${a.estado==='presente'?'Presente':'Ausente'}</span>
-    </div>`).join('')
+    +ultimas.map(function(a){
+      var rc=localClases.find(function(x){return x.id===a.clase_id;});
+      var rp=rc?localProfes.find(function(x){return x.id===rc.profe_id;}):null;
+      var rf=a.fecha?new Date(a.fecha+'T12:00:00').toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'--';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">'
+        +'<div><div style="font-size:13px;font-weight:500">'+(rc?TIPO_L[rc.tipo]:'Clase')+(rc?' - '+getHoraClase(rc):'')+'</div>'
+        +'<div style="font-size:11px;color:var(--text3)">'+rf+'</div>'
+        +(rp?'<div style="font-size:11px;color:var(--text3)">'+rp.nombre+' '+rp.apellido+'</div>':'')
+        +'</div><span class="badge '+(a.estado==='presente'?'pagado':'pendiente')+'">'+(a.estado==='presente'?'Presente':'Ausente')+'</span></div>';
+    }).join('')
     +(asistAlumno.length>5?`<div style="font-size:11px;color:var(--text3);margin-top:4px">Y ${asistAlumno.length-5} registro${asistAlumno.length-5!==1?'s':''} más</div>`:'')
     +'</div>';
 }
